@@ -63,7 +63,7 @@ except ValueError as e:
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a pull request or open an issue on the [GitHub repository](https://github.com/your-username/meal-generator).
+Contributions are welcome! Please feel free to submit a pull request or open an issue on the [GitHub repository](https://github.com/TomMcKenna1/meal-generator).
 
 ## License
 
