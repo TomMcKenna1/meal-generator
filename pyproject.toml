@@ -1,13 +1,30 @@
 [build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling >= 1.26"]
+build-backend = "hatchling.build"
 
 [project]
 name = "meal-generator"
-version = "1.0.0"
-dependencies = [
-    "google-genai",
+version = "0.0.1"
+authors = [
+  { name="Tom McKenna", email="tom2mckenna@gmail.com" },
 ]
+description = "A Python package to generate detailed meal information from natural language descriptions using Generative AI"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+  "google-genai"
+]
+license = "MIT"
+license-files = ["LICEN[CS]E*"]
+
+[project.urls]
+Homepage = "https://github.com/TomMcKenna1/meal-generator"
+Issues = "https://github.com/TomMcKenna1/meal-generator/issues"
+
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -1,6 +1,7 @@
 import json
 from typing import Dict, Any, List, Optional
 from google import genai
+from google.genai import types
 
 from .meal import Meal
 from .meal_component import MealComponent
@@ -146,7 +147,28 @@ class MealGenerator:
         """
         try:
             response = self._genai_client.models.generate_content(
-                model=self._MODEL_NAME, contents=prompt
+                model=self._MODEL_NAME,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    safety_settings=[
+                        types.SafetySetting(
+                            category="HARM_CATEGORY_HARASSMENT",
+                            threshold="BLOCK_LOW_AND_ABOVE",
+                        ),
+                        types.SafetySetting(
+                            category="HARM_CATEGORY_HATE_SPEECH",
+                            threshold="BLOCK_LOW_AND_ABOVE",
+                        ),
+                        types.SafetySetting(
+                            category="HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                            threshold="BLOCK_LOW_AND_ABOVE",
+                        ),
+                        types.SafetySetting(
+                            category="HARM_CATEGORY_DANGEROUS_CONTENT",
+                            threshold="BLOCK_LOW_AND_ABOVE",
+                        ),
+                    ]
+                ),
             )
             raw_text = response.text
             cleaned_text = (
@@ -218,9 +240,7 @@ class MealGenerator:
                 )
                 meal_component = MealComponent(
                     name=component_data.get("name", "Unknown Component"),
-                    brand=component_data.get(
-                        "brand"
-                    ),
+                    brand=component_data.get("brand"),
                     quantity=component_data.get("quantity", "N/A"),
                     total_weight=component_data.get("totalWeight", 0.0),
                     nutrient_profile=nutrient_profile,
@@ -275,8 +295,6 @@ class MealGenerator:
 
         meal_data = raw_response_data.get("meal")
         if not meal_data:
-            raise MealGenerationError(
-                "Unexpected AI response"
-            )
+            raise MealGenerationError("Unexpected AI response")
 
         return self._parse_meal_data(meal_data)
