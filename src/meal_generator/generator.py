@@ -1,3 +1,4 @@
+import html
 import json
 from typing import Dict, Any, List, Optional
 from google import genai
@@ -25,7 +26,12 @@ class MealGenerator:
         description of a meal and break it down into its constituent components. You must return
         a single, well-formed JSON object.
 
-        Analyze the following meal description: "{natural_language_string}"
+        Analyze the following meal description enclosed in <user_input> tags. If the description
+        is not a meal or food item, return {{"status":"bad_input"}}: 
+        
+        <user_input>
+        "{natural_language_string}"
+        </user_input>
 
         Based on your analysis, provide the following information in a JSON structure:
         - A name for the meal.
@@ -61,6 +67,7 @@ class MealGenerator:
 
         Here is the required JSON format:
         {{
+          "status": "ok"
           "meal": {{
             "name": "...",
             "description": "...",
@@ -127,8 +134,9 @@ class MealGenerator:
         Returns:
             str: The formatted prompt string.
         """
+        # Escape tags to prevent prompt injection
         return self._PROMPT_TEMPLATE.format(
-            natural_language_string=natural_language_string
+            natural_language_string=html.escape(natural_language_string)
         )
 
     def _call_ai_model(self, prompt: str) -> Dict[str, Any]:
@@ -293,8 +301,10 @@ class MealGenerator:
         prompt = self._create_prompt(natural_language_string)
         raw_response_data = self._call_ai_model(prompt)
 
+        generation_status = raw_response_data.get("status")
         meal_data = raw_response_data.get("meal")
-        if not meal_data:
-            raise MealGenerationError("Unexpected AI response")
-
-        return self._parse_meal_data(meal_data)
+        if generation_status == "ok" and meal_data:
+            return self._parse_meal_data(meal_data)
+        elif generation_status == "bad_input":
+            raise MealGenerationError("Input does not describe a meal")
+        raise MealGenerationError("Unexpected AI response")

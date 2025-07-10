@@ -1,11 +1,7 @@
-import os
 
-import dotenv
-from meal_generator.generator import MealGenerator
+from src.meal_generator.generator import MealGenerator
 
 if __name__ == "__main__":
-    dotenv.load_dotenv()
-    api_key = os.getenv("GEMINI_API_KEY")
     meal_generator = MealGenerator()
 
     meal_description = "large wrap with half a cup of rice, 100g of chilli, a tablespoon of soured cream"
