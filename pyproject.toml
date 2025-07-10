@@ -1,29 +1,13 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "meal-generator"
-version = "0.1.0"
-authors = [
-  { name="Tom McKenna", email="tom2mckenna@gmail.com" },
-]
-description = "A Python package to generate detailed meal information from natural language descriptions using Generative AI."
-readme = "README.md"
-requires-python = ">=3.8"
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
-    "Development Status :: 3 - Alpha",
-    "Intended Audience :: Developers",
-    "Topic :: Scientific/Engineering :: Artificial Intelligence",
-]
-keywords = ["meal", "nutrition", "generative-ai", "gemini"]
+version = "1.0.0"
 dependencies = [
-    "google-generativeai>=0.5.0",
+    "google-genai",
 ]
 
-[project.urls]
-"Homepage" = "https://github.com/TomMcKenna1/meal-generator"
-"Bug Tracker" = "https://github.com/TomMcKenna1/meal-generator/issues"
+[tool.setuptools.packages.find]
+where = ["src"]
