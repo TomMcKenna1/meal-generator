@@ -16,6 +16,11 @@ A Python package that uses a Generative AI model to parse natural language descr
 
 ***
 
+## Documentation
+For a complete API reference and more detailed information, please visit the full documentation on [Read The Docs](https://meal-generator.readthedocs.io/en/latest).
+
+***
+
 ## Installation
 
 Install the package using pip:
