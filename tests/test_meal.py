@@ -3,6 +3,7 @@ from src.meal_generator.meal import Meal
 from src.meal_generator.meal_component import MealComponent
 from src.meal_generator.nutrient_profile import NutrientProfile
 
+
 @pytest.fixture
 def sample_meal(meal_component_fixt: MealComponent) -> Meal:
     """Provides a sample Meal instance with one component."""
@@ -12,10 +13,12 @@ def sample_meal(meal_component_fixt: MealComponent) -> Meal:
         component_list=[meal_component_fixt],
     )
 
+
 def test_meal_creation(sample_meal: Meal):
     """Tests the successful creation of a Meal."""
     assert sample_meal.name == "Chicken Salad"
     assert len(sample_meal.component_list) == 1
+
 
 @pytest.mark.parametrize(
     "name, description, components, error",
@@ -30,10 +33,15 @@ def test_meal_creation_invalid(name, description, components, error):
     with pytest.raises(ValueError, match=error):
         Meal(name=name, description=description, component_list=components)
 
+
 def test_aggregate_nutrients():
     """Tests the nutrient aggregation logic."""
-    component1 = MealComponent("C1", "1", 100, NutrientProfile(energy=100, protein=10, contains_dairy=True))
-    component2 = MealComponent("C2", "1", 50, NutrientProfile(energy=50, protein=5, contains_gluten=True))
+    component1 = MealComponent(
+        "C1", "1", 100, NutrientProfile(energy=100, protein=10, contains_dairy=True)
+    )
+    component2 = MealComponent(
+        "C2", "1", 50, NutrientProfile(energy=50, protein=5, contains_gluten=True)
+    )
     meal = Meal("Test Meal", "Desc", [component1, component2])
 
     assert meal.nutrient_profile.energy == 150.0
@@ -42,15 +50,17 @@ def test_aggregate_nutrients():
     assert meal.nutrient_profile.contains_gluten is True
     assert meal.nutrient_profile.contains_histamines is False
 
+
 def test_add_component(sample_meal: Meal):
     """Tests adding a component to a meal."""
     initial_energy = sample_meal.nutrient_profile.energy
     new_component = MealComponent("Lettuce", "50g", 50, NutrientProfile(energy=10))
-    
+
     sample_meal.add_component(new_component)
-    
+
     assert len(sample_meal.component_list) == 2
     assert sample_meal.nutrient_profile.energy == initial_energy + 10.0
+
 
 def test_as_dict(sample_meal: Meal):
     """Tests the serialization of a Meal object to a dictionary."""

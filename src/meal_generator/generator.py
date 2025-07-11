@@ -1,12 +1,13 @@
 import html
-import json
 from typing import Dict, Any, List, Optional
 from google import genai
 from google.genai import types
+from pydantic import ValidationError
 
 from .meal import Meal
 from .meal_component import MealComponent
 from .nutrient_profile import NutrientProfile
+from .models import MealGenerationStatus, MealResponse
 
 
 class MealGenerationError(Exception):
@@ -64,49 +65,6 @@ class MealGenerator:
         - Processing level (as booleans):
           - isProcessed
           - isUltraProcessed
-
-        Here is the required JSON format:
-        {{
-          "status": "ok"
-          "meal": {{
-            "name": "...",
-            "description": "...",
-            "components": [
-              {{
-                "name": "...",
-                "brand": null,
-                "quantity": "...",
-                "totalWeight": ...,
-                "nutrientProfile": {{
-                  "energy": ...,
-                  "fat": ...,
-                  "saturatedFats": ...,
-                  "carbohydrates": ...,
-                  "sugars": ...,
-                  "fibre": ...,
-                  "protein": ...,
-                  "salt": ...,
-                  "containsDairy": false,
-                  "containsHighDairy": false,
-                  "containsGluten": false,
-                  "containsHighGluten": false,
-                  "containsHistamines": false,
-                  "containsHighHistamines": false,
-                  "containsSulphites": false,
-                  "containsHighSulphites": false,
-                  "containsSalicylates": false,
-                  "containsHighSalicylates": false,
-                  "containsCapsaicin": false,
-                  "containsHighCapsaicin": false,
-                  "isProcessed": false,
-                  "isUltraProcessed": false
-                }}
-              }}
-            ]
-          }}
-        }}
-
-        Return only the JSON object, with no additional text or explanations.
         """
 
     def __init__(self, api_key: Optional[str] = None):
@@ -175,21 +133,12 @@ class MealGenerator:
                             category="HARM_CATEGORY_DANGEROUS_CONTENT",
                             threshold="BLOCK_LOW_AND_ABOVE",
                         ),
-                    ]
+                    ],
+                    response_mime_type="application/json",
+                    response_schema=MealResponse,
                 ),
             )
-            raw_text = response.text
-            cleaned_text = (
-                raw_text.strip().replace("```json", "").replace("```", "").strip()
-            )
-            return json.loads(cleaned_text)
-        except (
-            ValueError,
-            json.JSONDecodeError,
-        ) as e:
-            raise MealGenerationError(
-                f"Failed to get or parse AI model response: {e}"
-            ) from e
+            return response.text
         except Exception as e:
             raise MealGenerationError(
                 f"An unexpected error occurred during AI model interaction: {e}"
@@ -299,12 +248,20 @@ class MealGenerator:
             )
 
         prompt = self._create_prompt(natural_language_string)
-        raw_response_data = self._call_ai_model(prompt)
-
-        generation_status = raw_response_data.get("status")
-        meal_data = raw_response_data.get("meal")
-        if generation_status == "ok" and meal_data:
-            return self._parse_meal_data(meal_data)
-        elif generation_status == "bad_input":
-            raise MealGenerationError("Input does not describe a meal")
-        raise MealGenerationError("Unexpected AI response")
+        json_response_string = self._call_ai_model(prompt)
+        try:
+            pydantic_response = MealResponse.model_validate_json(json_response_string)
+            if pydantic_response.status == MealGenerationStatus.BAD_INPUT:
+                raise MealGenerationError("Input was determined to not be a meal.")
+            if (
+                pydantic_response.status == MealGenerationStatus.OK
+                and pydantic_response.meal
+            ):
+                return Meal.from_pydantic(pydantic_response.meal)
+            raise MealGenerationError(
+                "AI response status was 'ok' but no meal data was provided."
+            )
+        except ValidationError as e:
+            raise MealGenerationError(f"AI response failed validation: {e}") from e
+        except Exception as e:
+            raise MealGenerationError(f"Failed to process the AI response: {e}") from e

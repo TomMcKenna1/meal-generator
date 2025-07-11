@@ -4,9 +4,13 @@ from unittest.mock import patch, MagicMock
 from src.meal_generator.generator import MealGenerator, MealGenerationError
 from src.meal_generator.meal import Meal
 
+
 @pytest.fixture
 def valid_api_response() -> dict:
-    """Provides a valid, structured API response."""
+    """
+    Provides a valid, structured API response that conforms to the Pydantic schema.
+    All required fields in `NutrientProfile` are now included.
+    """
     return {
         "status": "ok",
         "meal": {
@@ -18,18 +22,40 @@ def valid_api_response() -> dict:
                     "brand": None,
                     "quantity": "2 large",
                     "totalWeight": 120.0,
-                    "nutrientProfile": {"energy": 180, "protein": 15},
+                    "nutrientProfile": {
+                        "energy": 180.0,
+                        "fats": 14.0,
+                        "saturatedFats": 5.0,
+                        "carbohydrates": 1.0,
+                        "sugars": 1.0,
+                        "fibre": 0.0,
+                        "protein": 15.0,
+                        "salt": 0.2,
+                        "containsDairy": True,
+                    },
                 },
                 {
                     "name": "Whole Wheat Toast",
                     "brand": "Hovis",
                     "quantity": "2 slices",
                     "totalWeight": 60.0,
-                    "nutrientProfile": {"energy": 160, "protein": 8, "containsGluten": True},
+                    "nutrientProfile": {
+                        "energy": 160.0,
+                        "fats": 2.0,
+                        "saturatedFats": 0.5,
+                        "carbohydrates": 30.0,
+                        "sugars": 3.0,
+                        "fibre": 4.0,
+                        "protein": 8.0,
+                        "salt": 0.4,
+                        "containsGluten": True,
+                        "isProcessed": True,
+                    },
                 },
             ],
-        }
+        },
     }
+
 
 @patch("src.meal_generator.generator.genai")
 def test_generate_meal_success(mock_genai: MagicMock, valid_api_response: dict):
@@ -48,24 +74,45 @@ def test_generate_meal_success(mock_genai: MagicMock, valid_api_response: dict):
     assert meal.nutrient_profile.protein == 23.0
     assert meal.nutrient_profile.contains_gluten is True
 
+
 def test_generate_meal_empty_input():
     """Tests that an empty input string raises a ValueError."""
     generator = MealGenerator(api_key="dummy_key")
-    with pytest.raises(ValueError, match="Natural language string cannot be empty for meal generation."):
+    with pytest.raises(
+        ValueError, match="Natural language string cannot be empty for meal generation."
+    ):
         generator.generate_meal("")
 
+
 @pytest.mark.parametrize(
-    "api_response_text, error_message",
+    "api_response_text, expected_error_message",
     [
-        ('{"status": "bad_input"}', "Input does not describe a meal"),
-        ('{"status": "ok", "meal": null}', "Unexpected AI response"),
-        ('{"status": "ok", "meal": {"components": [{"nutrientProfile": {"energy": "invalid"}}]}}', "Malformed nutrient or component data encountered"),
-        ('{"data": "wrong_structure"}', "Unexpected AI response"),
-        ("this is not json", "Failed to get or parse AI model response"),
+        (
+            '{"status": "bad_input"}',
+            "Input was determined to not be a meal.",
+        ),
+        (
+            '{"status": "ok", "meal": null}',
+            "AI response status was 'ok' but no meal data was provided.",
+        ),
+        (
+            '{"status": "ok", "meal": {"name": "x", "description": "y", "components": [{"name": "c", "quantity": "1", "totalWeight": 1.0, "nutrientProfile": {"energy": "invalid"}}]}}',
+            "AI response failed validation",
+        ),
+        (
+            '{"data": "wrong_structure"}',
+            "AI response failed validation",
+        ),
+        (
+            "this is not a valid json string",
+            "AI response failed validation",
+        ),
     ],
 )
 @patch("src.meal_generator.generator.genai")
-def test_generate_meal_error_scenarios(mock_genai: MagicMock, api_response_text, error_message):
+def test_generate_meal_error_scenarios(
+    mock_genai: MagicMock, api_response_text, expected_error_message
+):
     """Tests that various invalid API responses raise MealGenerationError."""
     mock_response = MagicMock()
     mock_response.text = api_response_text
@@ -73,5 +120,5 @@ def test_generate_meal_error_scenarios(mock_genai: MagicMock, api_response_text,
 
     generator = MealGenerator(api_key="dummy_key")
 
-    with pytest.raises(MealGenerationError, match=error_message):
+    with pytest.raises(MealGenerationError, match=expected_error_message):
         generator.generate_meal("some meal")
