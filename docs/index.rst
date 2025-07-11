@@ -1,22 +1,22 @@
 .. Meal Generator documentation master file.
 
-#######################################
-Welcome to Meal Generator's documentation!
-#######################################
+###################################
+Welcome to Meal Generator's Docs!
+###################################
 
-This is the documentation for the **Meal Generator** package. A Python package that uses a Generative AI model to parse natural language descriptions of meals and returns a detailed breakdown, including components, estimated weights, and a comprehensive nutrient profile.
+This documentation provides a detailed reference for the ``meal_generator`` package, including all modules, classes, and functions.
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: API Reference:
 
    generator
    meal
    meal_component
    nutrient_profile
-
+   
 ******************
-Indices and tables
+Indices and Tables
 ******************
 
 * :ref:`genindex`
