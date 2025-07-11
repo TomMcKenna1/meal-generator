@@ -8,6 +8,7 @@ from src.meal_generator.meal import Meal
 def valid_api_response() -> dict:
     """Provides a valid, structured API response."""
     return {
+        "status": "ok",
         "meal": {
             "name": "Scrambled Eggs on Toast",
             "description": "A classic breakfast dish.",
@@ -50,20 +51,22 @@ def test_generate_meal_success(mock_genai: MagicMock, valid_api_response: dict):
 def test_generate_meal_empty_input():
     """Tests that an empty input string raises a ValueError."""
     generator = MealGenerator(api_key="dummy_key")
-    with pytest.raises(ValueError, match="Natural language string cannot be empty"):
+    with pytest.raises(ValueError, match="Natural language string cannot be empty for meal generation."):
         generator.generate_meal("")
 
 @pytest.mark.parametrize(
     "api_response_text, error_message",
     [
-        ('{"meal": {"components": [{"nutrientProfile": {"energy": "invalid"}}]}}', "Malformed nutrient or component data encountered"),
+        ('{"status": "bad_input"}', "Input does not describe a meal"),
+        ('{"status": "ok", "meal": null}', "Unexpected AI response"),
+        ('{"status": "ok", "meal": {"components": [{"nutrientProfile": {"energy": "invalid"}}]}}', "Malformed nutrient or component data encountered"),
         ('{"data": "wrong_structure"}', "Unexpected AI response"),
         ("this is not json", "Failed to get or parse AI model response"),
     ],
 )
 @patch("src.meal_generator.generator.genai")
-def test_generate_meal_malformed_response(mock_genai: MagicMock, api_response_text, error_message):
-    """Tests that malformed or unexpected API responses raise MealGenerationError."""
+def test_generate_meal_error_scenarios(mock_genai: MagicMock, api_response_text, error_message):
+    """Tests that various invalid API responses raise MealGenerationError."""
     mock_response = MagicMock()
     mock_response.text = api_response_text
     mock_genai.Client.return_value.models.generate_content.return_value = mock_response
