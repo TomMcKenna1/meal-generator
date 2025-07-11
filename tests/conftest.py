@@ -2,6 +2,7 @@ import pytest
 from src.meal_generator.nutrient_profile import NutrientProfile
 from src.meal_generator.meal_component import MealComponent
 
+
 @pytest.fixture
 def nutrient_profile_fixt() -> NutrientProfile:
     """Provides a sample NutrientProfile instance."""
@@ -17,6 +18,7 @@ def nutrient_profile_fixt() -> NutrientProfile:
         contains_gluten=True,
         is_processed=True,
     )
+
 
 @pytest.fixture
 def meal_component_fixt(nutrient_profile_fixt: NutrientProfile) -> MealComponent:

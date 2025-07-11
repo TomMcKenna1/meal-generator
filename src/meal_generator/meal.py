@@ -3,6 +3,7 @@ from typing import List, Dict, Any
 
 from .meal_component import MealComponent
 from .nutrient_profile import NutrientProfile
+from .models import Meal as PydanticMeal
 
 
 class Meal:
@@ -17,7 +18,9 @@ class Meal:
         nutrient_profile (NutrientProfile): The aggregated nutrient profile of the meal.
     """
 
-    def __init__(self, name: str, description: str, component_list: List[MealComponent]):
+    def __init__(
+        self, name: str, description: str, component_list: List[MealComponent]
+    ):
         if not name:
             raise ValueError("Meal name cannot be empty.")
         if not description:
@@ -38,27 +41,57 @@ class Meal:
         """
         total_energy = sum(c.nutrient_profile.energy for c in self.component_list)
         total_fats = sum(c.nutrient_profile.fats for c in self.component_list)
-        total_saturated_fats = sum(c.nutrient_profile.saturated_fats for c in self.component_list)
-        total_carbohydrates = sum(c.nutrient_profile.carbohydrates for c in self.component_list)
+        total_saturated_fats = sum(
+            c.nutrient_profile.saturated_fats for c in self.component_list
+        )
+        total_carbohydrates = sum(
+            c.nutrient_profile.carbohydrates for c in self.component_list
+        )
         total_sugars = sum(c.nutrient_profile.sugars for c in self.component_list)
         total_fibre = sum(c.nutrient_profile.fibre for c in self.component_list)
         total_protein = sum(c.nutrient_profile.protein for c in self.component_list)
         total_salt = sum(c.nutrient_profile.salt for c in self.component_list)
 
-        contains_dairy = any(c.nutrient_profile.contains_dairy for c in self.component_list)
-        contains_high_dairy = any(c.nutrient_profile.contains_high_dairy for c in self.component_list)
-        contains_gluten = any(c.nutrient_profile.contains_gluten for c in self.component_list)
-        contains_high_gluten = any(c.nutrient_profile.contains_high_gluten for c in self.component_list)
-        contains_histamines = any(c.nutrient_profile.contains_histamines for c in self.component_list)
-        contains_high_histamines = any(c.nutrient_profile.contains_high_histamines for c in self.component_list)
-        contains_sulphites = any(c.nutrient_profile.contains_sulphites for c in self.component_list)
-        contains_high_sulphites = any(c.nutrient_profile.contains_high_sulphites for c in self.component_list)
-        contains_salicylates = any(c.nutrient_profile.contains_salicylates for c in self.component_list)
-        contains_high_salicylates = any(c.nutrient_profile.contains_high_salicylates for c in self.component_list)
-        contains_capsaicin = any(c.nutrient_profile.contains_capsaicin for c in self.component_list)
-        contains_high_capsaicin = any(c.nutrient_profile.contains_high_capsaicin for c in self.component_list)
+        contains_dairy = any(
+            c.nutrient_profile.contains_dairy for c in self.component_list
+        )
+        contains_high_dairy = any(
+            c.nutrient_profile.contains_high_dairy for c in self.component_list
+        )
+        contains_gluten = any(
+            c.nutrient_profile.contains_gluten for c in self.component_list
+        )
+        contains_high_gluten = any(
+            c.nutrient_profile.contains_high_gluten for c in self.component_list
+        )
+        contains_histamines = any(
+            c.nutrient_profile.contains_histamines for c in self.component_list
+        )
+        contains_high_histamines = any(
+            c.nutrient_profile.contains_high_histamines for c in self.component_list
+        )
+        contains_sulphites = any(
+            c.nutrient_profile.contains_sulphites for c in self.component_list
+        )
+        contains_high_sulphites = any(
+            c.nutrient_profile.contains_high_sulphites for c in self.component_list
+        )
+        contains_salicylates = any(
+            c.nutrient_profile.contains_salicylates for c in self.component_list
+        )
+        contains_high_salicylates = any(
+            c.nutrient_profile.contains_high_salicylates for c in self.component_list
+        )
+        contains_capsaicin = any(
+            c.nutrient_profile.contains_capsaicin for c in self.component_list
+        )
+        contains_high_capsaicin = any(
+            c.nutrient_profile.contains_high_capsaicin for c in self.component_list
+        )
         is_processed = any(c.nutrient_profile.is_processed for c in self.component_list)
-        is_ultra_processed = any(c.nutrient_profile.is_ultra_processed for c in self.component_list)
+        is_ultra_processed = any(
+            c.nutrient_profile.is_ultra_processed for c in self.component_list
+        )
 
         return NutrientProfile(
             energy=total_energy,
@@ -82,7 +115,7 @@ class Meal:
             contains_capsaicin=contains_capsaicin,
             contains_high_capsaicin=contains_high_capsaicin,
             is_processed=is_processed,
-            is_ultra_processed=is_ultra_processed
+            is_ultra_processed=is_ultra_processed,
         )
 
     def as_dict(self) -> Dict[str, Any]:
@@ -91,7 +124,7 @@ class Meal:
             "name": self.name,
             "description": self.description,
             "nutrient_profile": self.nutrient_profile.as_dict(),
-            "components": [component.as_dict() for component in self.component_list]
+            "components": [component.as_dict() for component in self.component_list],
         }
 
     def add_component(self, component: MealComponent):
@@ -135,6 +168,29 @@ class Meal:
             if component.id == component_id:
                 return component
         return None
+
+    @classmethod
+    def from_pydantic(cls, pydantic_meal: PydanticMeal) -> "Meal":
+        """
+        Factory method to create a business logic Meal object
+        from a Pydantic Meal data model.
+        """
+        components = [MealComponent.from_pydantic(c) for c in pydantic_meal.components]
+        return cls(
+            name=pydantic_meal.name,
+            description=pydantic_meal.description,
+            component_list=components,
+        )
+
+    def to_pydantic(self) -> PydanticMeal:
+        """
+        Converts the business logic Meal object into its
+        Pydantic representation for serialization.
+        """
+        pydantic_components = [c.to_pydantic() for c in self.component_list]
+        return PydanticMeal(
+            name=self.name, description=self.description, components=pydantic_components
+        )
 
     def __repr__(self) -> str:
         return f"<Meal(id={self.id}, name='{self.name}', components={len(self.component_list)})>"

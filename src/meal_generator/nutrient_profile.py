@@ -1,5 +1,6 @@
 from dataclasses import dataclass, asdict, field
 from typing import Dict, Any
+from .models import NutrientProfile as PydanticNutrientProfile
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,19 +69,47 @@ class NutrientProfile:
             dict: A dictionary representation of the nutrient profile.
         """
         return asdict(self)
+
     def __post_init__(self):
         numerical_fields = [
-            "energy", "fats", "saturated_fats", "carbohydrates",
-            "sugars", "fibre", "protein", "salt"
+            "energy",
+            "fats",
+            "saturated_fats",
+            "carbohydrates",
+            "sugars",
+            "fibre",
+            "protein",
+            "salt",
         ]
         for field_name in numerical_fields:
             value = getattr(self, field_name)
             if not isinstance(value, (int, float)):
-                raise TypeError(f"'{field_name}' must be a numeric value, got {type(value).__name__}.")
+                raise TypeError(
+                    f"'{field_name}' must be a numeric value, got {type(value).__name__}."
+                )
             if value < 0:
                 raise ValueError(f"'{field_name}' cannot be negative. Got {value}.")
             object.__setattr__(self, field_name, float(value))
 
+    @classmethod
+    def from_pydantic(
+        cls, pydantic_profile: PydanticNutrientProfile
+    ) -> "NutrientProfile":
+        """
+        Factory method to create a NutrientProfile business object
+        from its Pydantic data model representation.
+        """
+        return cls(**pydantic_profile.model_dump())
+
+    def to_pydantic(self) -> PydanticNutrientProfile:
+        """
+        Converts the NutrientProfile business object into its
+        Pydantic data model representation for serialization.
+        """
+        return PydanticNutrientProfile(**asdict(self))
+
     def __repr__(self) -> str:
-        return (f"<NutrientProfile(energy={self.energy:.1f}kcal, protein={self.protein:.1f}g, "
-                f"fats={self.fats:.1f}g, carbs={self.carbohydrates:.1f}g)>")
+        return (
+            f"<NutrientProfile(energy={self.energy:.1f}kcal, protein={self.protein:.1f}g, "
+            f"fats={self.fats:.1f}g, carbs={self.carbohydrates:.1f}g)>"
+        )

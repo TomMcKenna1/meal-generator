@@ -1,4 +1,3 @@
-
 from src.meal_generator.generator import MealGenerator
 
 if __name__ == "__main__":

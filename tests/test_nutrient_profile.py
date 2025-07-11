@@ -1,6 +1,7 @@
 import pytest
 from src.meal_generator.nutrient_profile import NutrientProfile
 
+
 def test_nutrient_profile_creation():
     """Tests successful creation with default and specified values."""
     profile = NutrientProfile()
@@ -11,6 +12,7 @@ def test_nutrient_profile_creation():
     assert profile_custom.energy == 200.0
     assert profile_custom.protein == 25.5
     assert profile_custom.contains_gluten
+
 
 @pytest.mark.parametrize(
     "field, value",
@@ -25,6 +27,7 @@ def test_nutrient_profile_negative_values(field, value):
     with pytest.raises(ValueError, match=f"'{field}' cannot be negative"):
         NutrientProfile(**{field: value})
 
+
 @pytest.mark.parametrize(
     "field, value",
     [
@@ -37,6 +40,7 @@ def test_nutrient_profile_invalid_types(field, value):
     """Tests that non-numeric values for numerical fields raise a TypeError."""
     with pytest.raises(TypeError, match=f"'{field}' must be a numeric value"):
         NutrientProfile(**{field: value})
+
 
 def test_nutrient_profile_as_dict():
     """Tests the serialization of the NutrientProfile to a dictionary."""
