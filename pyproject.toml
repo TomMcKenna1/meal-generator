@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "meal-generator"
-version = "0.0.2"
+version = "0.0.3"
 authors = [
   { name="Tom McKenna", email="tom2mckenna@gmail.com" },
 ]
@@ -25,6 +25,11 @@ license-files = ["LICEN[CS]E*"]
 Homepage = "https://github.com/TomMcKenna1/meal-generator"
 Issues = "https://github.com/TomMcKenna1/meal-generator/issues"
 
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-cov",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
