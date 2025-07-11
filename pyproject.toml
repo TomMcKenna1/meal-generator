@@ -33,7 +33,6 @@ test = [
 ]
 docs = [
     "sphinx",
-    "tomllib",
 ]
 
 [tool.setuptools.packages.find]
