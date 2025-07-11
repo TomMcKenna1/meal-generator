@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "meal-generator"
-version = "1.0.0"
+version = "1.0.1"
 authors = [
   { name="Tom McKenna", email="tom2mckenna@gmail.com" },
 ]
@@ -16,6 +16,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
+  "pydantic",
   "google-genai"
 ]
 license = "MIT"
@@ -29,6 +30,10 @@ Issues = "https://github.com/TomMcKenna1/meal-generator/issues"
 test = [
     "pytest",
     "pytest-cov",
+]
+docs = [
+    "sphinx",
+    "tomllib",
 ]
 
 [tool.setuptools.packages.find]
