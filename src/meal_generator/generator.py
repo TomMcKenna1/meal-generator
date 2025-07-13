@@ -160,7 +160,11 @@ class MealGenerator:
                                  or if the response is not valid JSON.
         """
         try:
-            response = await self._genai_client.aio.models.generate_content(contents=prompt)
+            response = await self._genai_client.aio.models.generate_content(
+                model=self._MODEL_NAME,
+                contents=prompt,
+                config=self._MODEL_CONFIG,
+            )
             return response.text
         except Exception as e:
             raise MealGenerationError(
