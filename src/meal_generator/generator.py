@@ -22,6 +22,28 @@ class MealGenerator:
     """
 
     _MODEL_NAME = "gemini-2.5-flash"
+    _MODEL_CONFIG = types.GenerateContentConfig(
+        safety_settings=[
+            types.SafetySetting(
+                category="HARM_CATEGORY_HARASSMENT",
+                threshold="BLOCK_LOW_AND_ABOVE",
+            ),
+            types.SafetySetting(
+                category="HARM_CATEGORY_HATE_SPEECH",
+                threshold="BLOCK_LOW_AND_ABOVE",
+            ),
+            types.SafetySetting(
+                category="HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                threshold="BLOCK_LOW_AND_ABOVE",
+            ),
+            types.SafetySetting(
+                category="HARM_CATEGORY_DANGEROUS_CONTENT",
+                threshold="BLOCK_LOW_AND_ABOVE",
+            ),
+        ],
+        response_mime_type="application/json",
+        response_schema=MealResponse,
+    )
     _PROMPT_TEMPLATE = """
         You are an expert food and nutrition analyst. Your task is to analyze a natural language
         description of a meal and break it down into its constituent components. You must return
@@ -115,34 +137,54 @@ class MealGenerator:
             response = self._genai_client.models.generate_content(
                 model=self._MODEL_NAME,
                 contents=prompt,
-                config=types.GenerateContentConfig(
-                    safety_settings=[
-                        types.SafetySetting(
-                            category="HARM_CATEGORY_HARASSMENT",
-                            threshold="BLOCK_LOW_AND_ABOVE",
-                        ),
-                        types.SafetySetting(
-                            category="HARM_CATEGORY_HATE_SPEECH",
-                            threshold="BLOCK_LOW_AND_ABOVE",
-                        ),
-                        types.SafetySetting(
-                            category="HARM_CATEGORY_SEXUALLY_EXPLICIT",
-                            threshold="BLOCK_LOW_AND_ABOVE",
-                        ),
-                        types.SafetySetting(
-                            category="HARM_CATEGORY_DANGEROUS_CONTENT",
-                            threshold="BLOCK_LOW_AND_ABOVE",
-                        ),
-                    ],
-                    response_mime_type="application/json",
-                    response_schema=MealResponse,
-                ),
+                config=self._MODEL_CONFIG,
             )
             return response.text
         except Exception as e:
             raise MealGenerationError(
                 f"An unexpected error occurred during AI model interaction: {e}"
             ) from e
+
+    async def _call_ai_model_async(self, prompt: str) -> str:
+        """
+        Calls the Generative AI model asynchronously with the given prompt and parses the JSON response.
+
+        Args:
+            prompt (str): The prompt to send to the AI model.
+
+        Returns:
+            Dict[str, Any]: The parsed JSON response from the AI model.
+
+        Raises:
+            MealGenerationError: If there's an error communicating with the AI model,
+                                 or if the response is not valid JSON.
+        """
+        try:
+            response = await self._genai_client.aio.models.generate_content(contents=prompt)
+            return response.text
+        except Exception as e:
+            raise MealGenerationError(
+                f"An unexpected error occurred during async AI model interaction: {e}"
+            ) from e
+
+    def _process_response(self, json_response_string: str) -> Meal:
+        """Helper to process the JSON response string into a Meal object."""
+        try:
+            pydantic_response = MealResponse.model_validate_json(json_response_string)
+            if pydantic_response.status == MealGenerationStatus.BAD_INPUT:
+                raise MealGenerationError("Input was determined to not be a meal.")
+            if (
+                pydantic_response.status == MealGenerationStatus.OK
+                and pydantic_response.meal
+            ):
+                return Meal.from_pydantic(pydantic_response.meal)
+            raise MealGenerationError(
+                "AI response status was 'ok' but no meal data was provided."
+            )
+        except ValidationError as e:
+            raise MealGenerationError(f"AI response failed validation: {e}") from e
+        except Exception as e:
+            raise MealGenerationError(f"Failed to process the AI response: {e}") from e
 
     def generate_meal(self, natural_language_string: str) -> Meal:
         """
@@ -170,19 +212,28 @@ class MealGenerator:
 
         prompt = self._create_prompt(natural_language_string)
         json_response_string = self._call_ai_model(prompt)
-        try:
-            pydantic_response = MealResponse.model_validate_json(json_response_string)
-            if pydantic_response.status == MealGenerationStatus.BAD_INPUT:
-                raise MealGenerationError("Input was determined to not be a meal.")
-            if (
-                pydantic_response.status == MealGenerationStatus.OK
-                and pydantic_response.meal
-            ):
-                return Meal.from_pydantic(pydantic_response.meal)
-            raise MealGenerationError(
-                "AI response status was 'ok' but no meal data was provided."
-            )
-        except ValidationError as e:
-            raise MealGenerationError(f"AI response failed validation: {e}") from e
-        except Exception as e:
-            raise MealGenerationError(f"Failed to process the AI response: {e}") from e
+        return self._process_response(json_response_string)
+
+    async def generate_meal_async(self, natural_language_string: str) -> Meal:
+        """
+        Asynchronous version of generate_meal.
+
+        Args:
+            natural_language_string (str): A natural language description of the meal
+                                           (e.g., "A classic cheeseburger with fries").
+
+        Returns:
+            Meal: An object representing the generated meal with its components and
+                  aggregated nutrient profile.
+
+        Raises:
+            ValueError: If the input natural language string is empty.
+            MealGenerationError: If there's any failure in the generation process,
+                                 such as API communication issues, invalid JSON response,
+                                 or malformed data.
+        """
+        if not natural_language_string:
+            raise ValueError("Natural language string cannot be empty.")
+        prompt = self._create_prompt(natural_language_string)
+        json_response_string = await self._call_ai_model_async(prompt)
+        return self._process_response(json_response_string)

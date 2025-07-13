@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "meal-generator"
-version = "1.0.4"
+version = "1.1.0"
 authors = [
   { name="Tom McKenna", email="tom2mckenna@gmail.com" },
 ]
@@ -30,6 +30,7 @@ Issues = "https://github.com/TomMcKenna1/meal-generator/issues"
 test = [
     "pytest",
     "pytest-cov",
+    "pytest-asyncio",
 ]
 docs = [
     "sphinx",

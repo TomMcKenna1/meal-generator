@@ -1,8 +1,31 @@
 import pytest
 import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import AsyncMock, patch, MagicMock
 from src.meal_generator.generator import MealGenerator, MealGenerationError
 from src.meal_generator.meal import Meal
+
+ERROR_SCENARIOS = [
+    (
+        '{"status": "bad_input"}',
+        "Input was determined to not be a meal.",
+    ),
+    (
+        '{"status": "ok", "meal": null}',
+        "AI response status was 'ok' but no meal data was provided.",
+    ),
+    (
+        '{"status": "ok", "meal": {"name": "x", "description": "y", "components": [{"name": "c", "quantity": "1", "totalWeight": 1.0, "nutrientProfile": {"energy": "invalid"}}]}}',
+        "AI response failed validation",
+    ),
+    (
+        '{"data": "wrong_structure"}',
+        "AI response failed validation",
+    ),
+    (
+        "this is not a valid json string",
+        "AI response failed validation",
+    ),
+]
 
 
 @pytest.fixture
@@ -86,28 +109,7 @@ def test_generate_meal_empty_input():
 
 @pytest.mark.parametrize(
     "api_response_text, expected_error_message",
-    [
-        (
-            '{"status": "bad_input"}',
-            "Input was determined to not be a meal.",
-        ),
-        (
-            '{"status": "ok", "meal": null}',
-            "AI response status was 'ok' but no meal data was provided.",
-        ),
-        (
-            '{"status": "ok", "meal": {"name": "x", "description": "y", "components": [{"name": "c", "quantity": "1", "totalWeight": 1.0, "nutrientProfile": {"energy": "invalid"}}]}}',
-            "AI response failed validation",
-        ),
-        (
-            '{"data": "wrong_structure"}',
-            "AI response failed validation",
-        ),
-        (
-            "this is not a valid json string",
-            "AI response failed validation",
-        ),
-    ],
+    ERROR_SCENARIOS,
 )
 @patch("src.meal_generator.generator.genai")
 def test_generate_meal_error_scenarios(
@@ -122,3 +124,61 @@ def test_generate_meal_error_scenarios(
 
     with pytest.raises(MealGenerationError, match=expected_error_message):
         generator.generate_meal("some meal")
+
+
+@pytest.mark.asyncio
+@patch("src.meal_generator.generator.genai")
+async def test_generate_meal_async_success(
+    mock_genai: MagicMock, valid_api_response: dict
+):
+    """Tests a successful end-to-end asynchronous meal generation."""
+    mock_async_response = MagicMock()
+    mock_async_response.text = json.dumps(valid_api_response)
+
+    # The async method is on the aio client, which needs an awaitable mock
+    mock_genai.Client.return_value.aio.models.generate_content = AsyncMock(
+        return_value=mock_async_response
+    )
+
+    generator = MealGenerator(api_key="dummy_key")
+    meal = await generator.generate_meal_async("two scrambled eggs on hovis toast")
+
+    mock_genai.Client.return_value.aio.models.generate_content.assert_awaited_once()
+    assert isinstance(meal, Meal)
+    assert meal.name == "Scrambled Eggs on Toast"
+    assert len(meal.component_list) == 2
+    assert meal.nutrient_profile.energy == 340.0
+    assert meal.nutrient_profile.protein == 23.0
+    assert meal.nutrient_profile.contains_gluten is True
+
+
+@pytest.mark.asyncio
+async def test_generate_meal_async_empty_input():
+    """Tests that an empty input string raises a ValueError in the async method."""
+    generator = MealGenerator(api_key="dummy_key")
+    with pytest.raises(ValueError, match="Natural language string cannot be empty."):
+        await generator.generate_meal_async("")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "api_response_text, expected_error_message",
+    ERROR_SCENARIOS,
+)
+@patch("src.meal_generator.generator.genai")
+async def test_generate_meal_async_error_scenarios(
+    mock_genai: MagicMock, api_response_text: str, expected_error_message: str
+):
+    """
+    Tests that various invalid API responses raise MealGenerationError in the async method.
+    """
+    mock_async_response = MagicMock()
+    mock_async_response.text = api_response_text
+    mock_genai.Client.return_value.aio.models.generate_content = AsyncMock(
+        return_value=mock_async_response
+    )
+
+    generator = MealGenerator(api_key="dummy_key")
+
+    with pytest.raises(MealGenerationError, match=expected_error_message):
+        await generator.generate_meal_async("some meal")
