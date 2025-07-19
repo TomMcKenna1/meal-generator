@@ -3,7 +3,19 @@ from typing import List, Dict, Any
 
 from .meal_component import MealComponent
 from .nutrient_profile import NutrientProfile
-from .models import Meal as PydanticMeal
+from .models import _Meal
+
+
+class DuplicateComponentIDError(Exception):
+    """Raised when trying to add a component with an ID that already exists."""
+
+    pass
+
+
+class ComponentDoesNotExist(Exception):
+    """Raised when trying to remove a component that does not exist."""
+
+    pass
 
 
 class Meal:
@@ -31,92 +43,20 @@ class Meal:
         self.id: uuid.UUID = uuid.uuid4()
         self.name: str = name
         self.description: str = description
-        self.component_list: List[MealComponent] = component_list
+        self._components: dict[uuid.UUID, MealComponent] = {
+            component.id: component for component in component_list
+        }
         self.nutrient_profile: NutrientProfile = self._calculate_aggregate_nutrients()
+
+    @property
+    def component_list(self) -> list[MealComponent]:
+        return list(self._components.values())
 
     def _calculate_aggregate_nutrients(self) -> NutrientProfile:
         """
-        Calculates and returns the total nutrient profile for the meal from its components.
-        This method aggregates both numerical nutrient values and boolean flags.
+        Calculates the total nutrient profile for the meal from its components.
         """
-        total_energy = sum(c.nutrient_profile.energy for c in self.component_list)
-        total_fats = sum(c.nutrient_profile.fats for c in self.component_list)
-        total_saturated_fats = sum(
-            c.nutrient_profile.saturated_fats for c in self.component_list
-        )
-        total_carbohydrates = sum(
-            c.nutrient_profile.carbohydrates for c in self.component_list
-        )
-        total_sugars = sum(c.nutrient_profile.sugars for c in self.component_list)
-        total_fibre = sum(c.nutrient_profile.fibre for c in self.component_list)
-        total_protein = sum(c.nutrient_profile.protein for c in self.component_list)
-        total_salt = sum(c.nutrient_profile.salt for c in self.component_list)
-
-        contains_dairy = any(
-            c.nutrient_profile.contains_dairy for c in self.component_list
-        )
-        contains_high_dairy = any(
-            c.nutrient_profile.contains_high_dairy for c in self.component_list
-        )
-        contains_gluten = any(
-            c.nutrient_profile.contains_gluten for c in self.component_list
-        )
-        contains_high_gluten = any(
-            c.nutrient_profile.contains_high_gluten for c in self.component_list
-        )
-        contains_histamines = any(
-            c.nutrient_profile.contains_histamines for c in self.component_list
-        )
-        contains_high_histamines = any(
-            c.nutrient_profile.contains_high_histamines for c in self.component_list
-        )
-        contains_sulphites = any(
-            c.nutrient_profile.contains_sulphites for c in self.component_list
-        )
-        contains_high_sulphites = any(
-            c.nutrient_profile.contains_high_sulphites for c in self.component_list
-        )
-        contains_salicylates = any(
-            c.nutrient_profile.contains_salicylates for c in self.component_list
-        )
-        contains_high_salicylates = any(
-            c.nutrient_profile.contains_high_salicylates for c in self.component_list
-        )
-        contains_capsaicin = any(
-            c.nutrient_profile.contains_capsaicin for c in self.component_list
-        )
-        contains_high_capsaicin = any(
-            c.nutrient_profile.contains_high_capsaicin for c in self.component_list
-        )
-        is_processed = any(c.nutrient_profile.is_processed for c in self.component_list)
-        is_ultra_processed = any(
-            c.nutrient_profile.is_ultra_processed for c in self.component_list
-        )
-
-        return NutrientProfile(
-            energy=total_energy,
-            fats=total_fats,
-            saturated_fats=total_saturated_fats,
-            carbohydrates=total_carbohydrates,
-            sugars=total_sugars,
-            fibre=total_fibre,
-            protein=total_protein,
-            salt=total_salt,
-            contains_dairy=contains_dairy,
-            contains_high_dairy=contains_high_dairy,
-            contains_gluten=contains_gluten,
-            contains_high_gluten=contains_high_gluten,
-            contains_histamines=contains_histamines,
-            contains_high_histamines=contains_high_histamines,
-            contains_sulphites=contains_sulphites,
-            contains_high_sulphites=contains_high_sulphites,
-            contains_salicylates=contains_salicylates,
-            contains_high_salicylates=contains_high_salicylates,
-            contains_capsaicin=contains_capsaicin,
-            contains_high_capsaicin=contains_high_capsaicin,
-            is_processed=is_processed,
-            is_ultra_processed=is_ultra_processed,
-        )
+        return sum([c.nutrient_profile for c in self.component_list], NutrientProfile())
 
     def as_dict(self) -> Dict[str, Any]:
         return {
@@ -134,10 +74,14 @@ class Meal:
         Args:
             component (MealComponent): The meal component to add.
         """
-        self.component_list.append(component)
+        if component.id in self._components:
+            raise DuplicateComponentIDError(
+                f"Component with id: {component.id} already exists"
+            )
+        self._components[component.id] = component
         self.nutrient_profile = self._calculate_aggregate_nutrients()
 
-    def remove_component(self, component_id: uuid.UUID) -> bool:
+    def remove_component(self, component_id: uuid.UUID) -> None:
         """
         Removes a component from the meal by its ID.
 
@@ -147,12 +91,10 @@ class Meal:
         Returns:
             bool: True if the component was removed, False otherwise.
         """
-        initial_count = len(self.component_list)
-        self.component_list = [c for c in self.component_list if c.id != component_id]
-        if len(self.component_list) < initial_count:
-            self.nutrient_profile = self._calculate_aggregate_nutrients()
-            return True
-        return False
+        if component_id not in self._components:
+            raise ComponentDoesNotExist(f"Component id: {component_id} does not exist")
+        del self._components[component_id]
+        self.nutrient_profile = self._calculate_aggregate_nutrients()
 
     def get_component_by_id(self, component_id: uuid.UUID) -> MealComponent | None:
         """
@@ -164,13 +106,10 @@ class Meal:
         Returns:
             MealComponent | None: The found MealComponent object, or None if not found.
         """
-        for component in self.component_list:
-            if component.id == component_id:
-                return component
-        return None
+        return self._components.get(component_id)
 
     @classmethod
-    def from_pydantic(cls, pydantic_meal: PydanticMeal) -> "Meal":
+    def from_pydantic(cls, pydantic_meal: _Meal) -> "Meal":
         """
         Factory method to create a business logic Meal object
         from a Pydantic Meal data model.
@@ -180,16 +119,6 @@ class Meal:
             name=pydantic_meal.name,
             description=pydantic_meal.description,
             component_list=components,
-        )
-
-    def to_pydantic(self) -> PydanticMeal:
-        """
-        Converts the business logic Meal object into its
-        Pydantic representation for serialization.
-        """
-        pydantic_components = [c.to_pydantic() for c in self.component_list]
-        return PydanticMeal(
-            name=self.name, description=self.description, components=pydantic_components
         )
 
     def __repr__(self) -> str:
