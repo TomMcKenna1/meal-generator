@@ -1,29 +1,22 @@
 import enum
 from typing import List, Optional
-from pydantic import BaseModel, Field, AliasGenerator
+from pydantic import BaseModel
 from pydantic.config import ConfigDict
+from pydantic.alias_generators import to_camel
 
 
-def to_camel(snake_case_str: str) -> str:
-    """Convert a snake_case string to camelCase."""
-    first, *others = snake_case_str.split("_")
-    return first + "".join(word.capitalize() for word in others)
-
-
-class MealGenerationStatus(enum.Enum):
+class _MealGenerationStatus(enum.Enum):
     OK = "ok"
     BAD_INPUT = "bad_input"
 
 
-class NutrientProfile(BaseModel):
+class _NutrientProfile(BaseModel):
     """
     Represents the nutrient profile of a meal component.
     """
 
     model_config = ConfigDict(
-        alias_generator=AliasGenerator(
-            validation_alias=to_camel, serialization_alias=to_camel
-        ),
+        alias_generator=to_camel,
         populate_by_name=True,
     )
 
@@ -51,15 +44,13 @@ class NutrientProfile(BaseModel):
     is_ultra_processed: bool = False
 
 
-class Component(BaseModel):
+class _Component(BaseModel):
     """
     Represents a component of a meal.
     """
 
     model_config = ConfigDict(
-        alias_generator=AliasGenerator(
-            validation_alias=to_camel, serialization_alias=to_camel
-        ),
+        alias_generator=to_camel,
         populate_by_name=True,
     )
 
@@ -67,29 +58,27 @@ class Component(BaseModel):
     brand: Optional[str] = None
     quantity: str
     total_weight: float
-    nutrient_profile: NutrientProfile
+    nutrient_profile: _NutrientProfile
 
 
-class Meal(BaseModel):
+class _Meal(BaseModel):
     """
     Represents a meal, including its components.
     """
 
     model_config = ConfigDict(
-        alias_generator=AliasGenerator(
-            validation_alias=to_camel, serialization_alias=to_camel
-        ),
+        alias_generator=to_camel,
         populate_by_name=True,
     )
     name: str
     description: str
-    components: List[Component]
+    components: List[_Component]
 
 
-class MealResponse(BaseModel):
+class _MealResponse(BaseModel):
     """
     Represents the top-level response for a meal query.
     """
 
-    status: MealGenerationStatus
-    meal: Optional[Meal] = None
+    status: _MealGenerationStatus
+    meal: Optional[_Meal] = None

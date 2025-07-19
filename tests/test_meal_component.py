@@ -15,5 +15,5 @@ def test_meal_component_as_dict(meal_component_fixt: MealComponent):
     component_dict = meal_component_fixt.as_dict()
     assert component_dict["name"] == "Grilled Chicken Breast"
     assert component_dict["brand"] == "Farm Fresh"
-    assert "nutrientProfile" in component_dict
-    assert component_dict["nutrientProfile"]["energy"] == 150.0
+    assert "nutrient_profile" in component_dict
+    assert component_dict["nutrient_profile"]["energy"] == 150.0

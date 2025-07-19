@@ -1,13 +1,11 @@
 import html
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, Optional
 from google import genai
 from google.genai import types
 from pydantic import ValidationError
 
 from .meal import Meal
-from .meal_component import MealComponent
-from .nutrient_profile import NutrientProfile
-from .models import MealGenerationStatus, MealResponse
+from .models import _MealGenerationStatus, _MealResponse
 
 
 class MealGenerationError(Exception):
@@ -42,7 +40,7 @@ class MealGenerator:
             ),
         ],
         response_mime_type="application/json",
-        response_schema=MealResponse,
+        response_schema=_MealResponse,
     )
     _PROMPT_TEMPLATE = """
         You are an expert food and nutrition analyst. Your task is to analyze a natural language
@@ -174,11 +172,11 @@ class MealGenerator:
     def _process_response(self, json_response_string: str) -> Meal:
         """Helper to process the JSON response string into a Meal object."""
         try:
-            pydantic_response = MealResponse.model_validate_json(json_response_string)
-            if pydantic_response.status == MealGenerationStatus.BAD_INPUT:
+            pydantic_response = _MealResponse.model_validate_json(json_response_string)
+            if pydantic_response.status == _MealGenerationStatus.BAD_INPUT:
                 raise MealGenerationError("Input was determined to not be a meal.")
             if (
-                pydantic_response.status == MealGenerationStatus.OK
+                pydantic_response.status == _MealGenerationStatus.OK
                 and pydantic_response.meal
             ):
                 return Meal.from_pydantic(pydantic_response.meal)

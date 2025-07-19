@@ -1,5 +1,6 @@
 import pytest
-from src.meal_generator.meal import Meal
+import uuid
+from src.meal_generator.meal import Meal, DuplicateComponentIDError, ComponentDoesNotExist
 from src.meal_generator.meal_component import MealComponent
 from src.meal_generator.nutrient_profile import NutrientProfile
 
@@ -60,6 +61,36 @@ def test_add_component(sample_meal: Meal):
 
     assert len(sample_meal.component_list) == 2
     assert sample_meal.nutrient_profile.energy == initial_energy + 10.0
+
+
+def test_add_duplicate_component_raises_error(sample_meal: Meal, meal_component_fixt: MealComponent):
+    """Tests that adding a component with a duplicate ID raises an error."""
+    with pytest.raises(DuplicateComponentIDError, match=f"Component with id: {meal_component_fixt.id} already exists"):
+        sample_meal.add_component(meal_component_fixt)
+
+
+def test_remove_component(sample_meal: Meal, meal_component_fixt: MealComponent):
+    """Tests removing a component and verifies nutrient recalculation."""
+    new_component = MealComponent("Tomato", "30g", 30, NutrientProfile(energy=15, protein=1))
+    sample_meal.add_component(new_component)
+
+    assert len(sample_meal.component_list) == 2
+    assert sample_meal.nutrient_profile.energy == 165.0
+    assert sample_meal.nutrient_profile.protein == 16.0
+
+    sample_meal.remove_component(meal_component_fixt.id)
+    
+    assert len(sample_meal.component_list) == 1
+    assert sample_meal.get_component_by_id(meal_component_fixt.id) is None
+    assert sample_meal.nutrient_profile.energy == 15.0
+    assert sample_meal.nutrient_profile.protein == 1.0
+
+
+def test_remove_nonexistent_component_raises_error(sample_meal: Meal):
+    """Tests that trying to remove a component that does not exist raises an error."""
+    non_existent_id = uuid.uuid4()
+    with pytest.raises(ComponentDoesNotExist, match=f"Component id: {non_existent_id} does not exist"):
+        sample_meal.remove_component(non_existent_id)
 
 
 def test_as_dict(sample_meal: Meal):
