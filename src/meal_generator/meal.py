@@ -1,9 +1,13 @@
 import uuid
-from typing import List, Dict, Any
+from typing import List, Dict, Any, TYPE_CHECKING
 
+from .mappable import _PydanticMappable
 from .meal_component import MealComponent
 from .nutrient_profile import NutrientProfile
 from .models import _Meal
+
+if TYPE_CHECKING:
+    from .generator import MealGenerator
 
 
 class DuplicateComponentIDError(Exception):
@@ -18,7 +22,7 @@ class ComponentDoesNotExist(Exception):
     pass
 
 
-class Meal:
+class Meal(_PydanticMappable):
     """
     Represents a complete meal, composed of various components.
 
@@ -80,6 +84,40 @@ class Meal:
             )
         self._components[component.id] = component
         self.nutrient_profile = self._calculate_aggregate_nutrients()
+
+    def add_component_from_string(
+        self, natural_language_string: str, meal_generator: "MealGenerator"
+    ) -> "Meal":
+        """
+        Generates a new component from a natural language string and adds it to the meal.
+
+        Args:
+            natural_language_string (str): The natural language description of the component.
+            meal_generator (MealGenerator): The meal generator to use for component creation.
+
+        Returns:
+            Meal: The modified meal with the new component.
+        """
+        new_component = meal_generator.generate_component(natural_language_string, self)
+        self.add_component(new_component)
+        return self
+    
+    async def add_component_from_string_async(
+        self, natural_language_string: str, meal_generator: "MealGenerator"
+    ) -> "Meal":
+        """
+        Generates a new component from a natural language string and adds it to the meal.
+
+        Args:
+            natural_language_string (str): The natural language description of the component.
+            meal_generator (MealGenerator): The meal generator to use for component creation.
+
+        Returns:
+            Meal: The modified meal with the new component.
+        """
+        new_component = await meal_generator.generate_component_async(natural_language_string, self)
+        self.add_component(new_component)
+        return self
 
     def remove_component(self, component_id: uuid.UUID) -> None:
         """

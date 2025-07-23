@@ -92,26 +92,30 @@ class NutrientProfile:
             object.__setattr__(self, field_name, float(value))
 
     @classmethod
-    def from_pydantic(
-        cls, pydantic_profile: _NutrientProfile
-    ) -> "NutrientProfile":
+    def from_pydantic(cls, pydantic_profile: _NutrientProfile) -> "NutrientProfile":
         """
         Factory method to create a NutrientProfile business object
         from its Pydantic data model representation.
         """
         return cls(**pydantic_profile.model_dump())
-    
+
     def __add__(self, other: "NutrientProfile") -> "NutrientProfile":
         """Combines two nutrient profiles."""
         new_values = {}
         for field in fields(self):
             if isinstance(getattr(self, field.name), bool):
-                new_values[field.name] = getattr(self, field.name) or getattr(other, field.name)
+                new_values[field.name] = getattr(self, field.name) or getattr(
+                    other, field.name
+                )
             elif isinstance(getattr(self, field.name), (int, float)):
-                new_values[field.name] = getattr(self, field.name) + getattr(other, field.name)
+                new_values[field.name] = getattr(self, field.name) + getattr(
+                    other, field.name
+                )
 
         return NutrientProfile(**new_values)
+
     __radd__ = __add__
+
     def __repr__(self) -> str:
         return (
             f"<NutrientProfile(energy={self.energy:.1f}kcal, protein={self.protein:.1f}g, "

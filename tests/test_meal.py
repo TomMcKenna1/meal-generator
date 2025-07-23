@@ -1,6 +1,11 @@
 import pytest
 import uuid
-from src.meal_generator.meal import Meal, DuplicateComponentIDError, ComponentDoesNotExist
+from unittest.mock import AsyncMock, MagicMock
+from src.meal_generator.meal import (
+    Meal,
+    DuplicateComponentIDError,
+    ComponentDoesNotExist,
+)
 from src.meal_generator.meal_component import MealComponent
 from src.meal_generator.nutrient_profile import NutrientProfile
 
@@ -63,15 +68,74 @@ def test_add_component(sample_meal: Meal):
     assert sample_meal.nutrient_profile.energy == initial_energy + 10.0
 
 
-def test_add_duplicate_component_raises_error(sample_meal: Meal, meal_component_fixt: MealComponent):
+def test_add_component_from_string(sample_meal: Meal):
+    """Tests adding a component from a natural language string."""
+    mock_generator = MagicMock()
+    new_component = MealComponent(
+        name="A dollop of mayo",
+        quantity="1 tbsp",
+        total_weight=15,
+        nutrient_profile=NutrientProfile(energy=100, fats=11),
+    )
+    mock_generator.generate_component.return_value = new_component
+
+    initial_component_count = len(sample_meal.component_list)
+    initial_energy = sample_meal.nutrient_profile.energy
+
+    sample_meal.add_component_from_string("a dollop of mayo", mock_generator)
+
+    mock_generator.generate_component.assert_called_once_with(
+        "a dollop of mayo", sample_meal
+    )
+    assert len(sample_meal.component_list) == initial_component_count + 1
+    assert sample_meal.nutrient_profile.energy == initial_energy + 100
+    assert any(c.name == "A dollop of mayo" for c in sample_meal.component_list)
+
+
+@pytest.mark.asyncio
+async def test_add_component_from_string_async(sample_meal: Meal):
+    """Tests adding a component asynchronously from a natural language string."""
+    mock_generator = MagicMock()
+    new_component = MealComponent(
+        name="A dollop of mayo",
+        quantity="1 tbsp",
+        total_weight=15,
+        nutrient_profile=NutrientProfile(energy=100, fats=11),
+    )
+    mock_generator.generate_component_async = AsyncMock(return_value=new_component)
+
+    initial_component_count = len(sample_meal.component_list)
+    initial_energy = sample_meal.nutrient_profile.energy
+    natural_language_string = "a dollop of mayo"
+
+    await sample_meal.add_component_from_string_async(
+        natural_language_string, mock_generator
+    )
+
+    mock_generator.generate_component_async.assert_awaited_once_with(
+        natural_language_string, sample_meal
+    )
+    assert len(sample_meal.component_list) == initial_component_count + 1
+    assert sample_meal.nutrient_profile.energy == initial_energy + 100
+    assert any(c.name == "A dollop of mayo" for c in sample_meal.component_list)
+
+
+def test_add_duplicate_component_raises_error(
+    sample_meal: Meal, meal_component_fixt: MealComponent
+):
     """Tests that adding a component with a duplicate ID raises an error."""
-    with pytest.raises(DuplicateComponentIDError, match=f"Component with id: {meal_component_fixt.id} already exists"):
+    with pytest.raises(
+        DuplicateComponentIDError,
+        match=f"Component with id: {meal_component_fixt.id} already exists",
+    ):
         sample_meal.add_component(meal_component_fixt)
 
 
 def test_remove_component(sample_meal: Meal, meal_component_fixt: MealComponent):
     """Tests removing a component and verifies nutrient recalculation."""
-    new_component = MealComponent("Tomato", "30g", 30, NutrientProfile(energy=15, protein=1))
+    new_component = MealComponent(
+        "Tomato", "30g", 30, NutrientProfile(energy=15, protein=1)
+    )
     sample_meal.add_component(new_component)
 
     assert len(sample_meal.component_list) == 2
@@ -79,7 +143,7 @@ def test_remove_component(sample_meal: Meal, meal_component_fixt: MealComponent)
     assert sample_meal.nutrient_profile.protein == 16.0
 
     sample_meal.remove_component(meal_component_fixt.id)
-    
+
     assert len(sample_meal.component_list) == 1
     assert sample_meal.get_component_by_id(meal_component_fixt.id) is None
     assert sample_meal.nutrient_profile.energy == 15.0
@@ -89,7 +153,9 @@ def test_remove_component(sample_meal: Meal, meal_component_fixt: MealComponent)
 def test_remove_nonexistent_component_raises_error(sample_meal: Meal):
     """Tests that trying to remove a component that does not exist raises an error."""
     non_existent_id = uuid.uuid4()
-    with pytest.raises(ComponentDoesNotExist, match=f"Component id: {non_existent_id} does not exist"):
+    with pytest.raises(
+        ComponentDoesNotExist, match=f"Component id: {non_existent_id} does not exist"
+    ):
         sample_meal.remove_component(non_existent_id)
 
 
