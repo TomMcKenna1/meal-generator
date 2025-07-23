@@ -1,11 +1,11 @@
 import enum
-from typing import List, Optional
+from typing import Generic, List, Optional, TypeVar
 from pydantic import BaseModel
 from pydantic.config import ConfigDict
 from pydantic.alias_generators import to_camel
 
 
-class _MealGenerationStatus(enum.Enum):
+class _GenerationStatus(enum.Enum):
     OK = "ok"
     BAD_INPUT = "bad_input"
 
@@ -75,10 +75,13 @@ class _Meal(BaseModel):
     components: List[_Component]
 
 
-class _MealResponse(BaseModel):
-    """
-    Represents the top-level response for a meal query.
-    """
+ResultT = TypeVar("ResultT", bound=BaseModel)
 
-    status: _MealGenerationStatus
-    meal: Optional[_Meal] = None
+
+class _AIResponse(BaseModel, Generic[ResultT]):
+    status: _GenerationStatus
+    result: Optional[ResultT] = None
+
+
+_MealResponse = _AIResponse[_Meal]
+_ComponentResponse = _AIResponse[_Component]

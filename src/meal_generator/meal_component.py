@@ -1,10 +1,12 @@
 from typing import Optional
 import uuid
+
+from .mappable import _PydanticMappable
 from .nutrient_profile import NutrientProfile
 from .models import _Component
 
 
-class MealComponent:
+class MealComponent(_PydanticMappable):
     """
     Represents a single component of a meal.
     """
@@ -26,7 +28,7 @@ class MealComponent:
 
     def as_dict(self) -> dict:
         return {
-            "id": self.id,
+            "id": str(self.id),
             "name": self.name,
             "brand": self.brand,
             "quantity": self.quantity,
