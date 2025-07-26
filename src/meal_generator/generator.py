@@ -57,7 +57,6 @@ class MealGenerator:
         **</country_of_origin>**
 
         Based on your analysis and the Core Logic above, provide the following information in a JSON structure:
-        **- A `countryOfOrigin` field, reflecting the country provided in the input.**
         - A name for the meal.
         - A brief and concise description of the meal.
         - A list of all individual components of the meal.
@@ -78,7 +77,7 @@ class MealGenerator:
         - fibre (in grams)
         - protein (in grams)
         - salt (in grams)
-        - Allergen and sensitivity information (as booleans):
+        Allergen and sensitivity information (as booleans):
         - containsDairy, containsHighDairy
         - containsGluten, containsHighGluten
         - containsHistamines, containsHighHistamines
