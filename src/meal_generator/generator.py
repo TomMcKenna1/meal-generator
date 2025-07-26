@@ -30,18 +30,27 @@ class MealGenerator:
 
     _MODEL_NAME = "gemini-2.5-flash"
     _PROMPT_TEMPLATE = """
-        You are an expert food and nutrition analyst. Your task is to analyze a natural language
-        description of a meal and break it down into its constituent components. You must return
-        a single, well-formed JSON object.
+        You are a sophisticated Food and Nutrition Intelligence Engine. Your primary goal is to analyze a natural language description of a meal and identify its main, user-level components, then return a single, well-formed JSON object.
 
-        Analyze the following meal description enclosed in <user_input> tags. If the description
-        is not a meal or food item, return {{"status":"bad_input"}}: 
-        
+        Your analysis must follow this Core Logic:
+
+        1.  **Pre-defined and Branded Items:** If an item is a specific, well-known product from a brand or restaurant (e.g., 'Dominos Mighty Meaty pizza', 'Big Mac', 'Tesco Finest Lasagne'), you must treat the **entire item as a SINGLE component**. DO NOT break it down into its base ingredients (like flour, tomato sauce, cheese, etc.). Your task is to find the nutritional information for the product as a whole.
+
+        2.  **Combo Meals:** If the item is a known 'combo meal' or 'box meal' (e.g., 'KFC Zinger Tower Box Meal', 'McDonald's Big Mac Meal'), you must break it down into its main constituent **ITEMS** (e.g., 'Zinger Tower Burger', 'Regular Fries', 'Pepsi Max'). Do not break down these individual items any further.
+
+        3.  **User-Described Meals:** If the user describes a meal by explicitly listing its main parts (e.g., 'a meal of chicken breast, rice, and broccoli' or 'pasta with single cream and lardons'), you MUST break the meal down into those specified components ('chicken breast', 'rice', 'broccoli' or 'pasta', 'single cream', 'lardons'). This rule applies when the user is effectively giving you the recipe or the contents of their plate, rather than naming a pre-made product.
+
+        **Hierarchy:** In essence, you should mirror the level of detail provided by the user. If they name a single product, analyze that product. If they list the parts, analyze those parts.
+
+        ---
+
+        Analyze the following meal description enclosed in <user_input> tags. If the description is not a meal or food item, return {{"status":"bad_input"}}:
+
         <user_input>
         "{natural_language_string}"
         </user_input>
 
-        Based on your analysis, provide the following information in a JSON structure:
+        Based on your analysis and the Core Logic above, provide the following information in a JSON structure:
         - A name for the meal.
         - A brief and concise description of the meal.
         - A list of all individual components of the meal.
@@ -49,7 +58,7 @@ class MealGenerator:
         For each component, provide:
         - The name of the ingredient.
         - The brand (if specified, otherwise null).
-        - The quantity as described in the text (e.g., "1 cup", "2 slices").
+        - The quantity as described in the text (e.g., "1 cup", "2 slices", "1 regular portion").
         - The total weight in grams (provide a reasonable estimate, e.g., 120.5).
         - A detailed nutrient profile.
 
@@ -63,15 +72,15 @@ class MealGenerator:
         - protein (in grams)
         - salt (in grams)
         - Allergen and sensitivity information (as booleans):
-          - containsDairy, containsHighDairy
-          - containsGluten, containsHighGluten
-          - containsHistamines, containsHighHistamines
-          - containsSulphites, containsHighSulphites
-          - containsSalicylates, containsHighSalicylates
-          - containsCapsaicin, containsHighCapsaicin
+        - containsDairy, containsHighDairy
+        - containsGluten, containsHighGluten
+        - containsHistamines, containsHighHistamines
+        - containsSulphites, containsHighSulphites
+        - containsSalicylates, containsHighSalicylates
+        - containsCapsaicin, containsHighCapsaicin
         - Processing level (as booleans):
-          - isProcessed
-          - isUltraProcessed
+        - isProcessed
+        - isUltraProcessed
         """
     _COMPONENT_PROMPT_TEMPLATE = """
         You are an expert food and nutrition analyst. Your task is to analyze a natural language
@@ -339,7 +348,9 @@ class MealGenerator:
         prompt = self._create_component_prompt(natural_language_string, meal)
         config = self._create_model_config(response_schema=_ComponentResponse)
         json_response_string = self._call_ai_model(prompt, config)
-        return self._process_response(MealComponent, _ComponentResponse, json_response_string)
+        return self._process_response(
+            MealComponent, _ComponentResponse, json_response_string
+        )
 
     async def generate_component_async(
         self, natural_language_string: str, meal: Meal
@@ -359,4 +370,6 @@ class MealGenerator:
         prompt = self._create_component_prompt(natural_language_string, meal)
         config = self._create_model_config(response_schema=_ComponentResponse)
         json_response_string = await self._call_ai_model_async(prompt, config)
-        return self._process_response(MealComponent, _ComponentResponse, json_response_string)
+        return self._process_response(
+            MealComponent, _ComponentResponse, json_response_string
+        )
