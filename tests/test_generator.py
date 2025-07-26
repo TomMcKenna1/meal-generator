@@ -1,6 +1,7 @@
 import pytest
 import json
 from unittest.mock import AsyncMock, patch, MagicMock
+from src.meal_generator.models import MealType
 from src.meal_generator.generator import MealGenerator, MealGenerationError
 from src.meal_generator.meal import Meal
 from src.meal_generator.meal_component import MealComponent
@@ -41,6 +42,7 @@ def valid_api_response() -> dict:
         "result": {
             "name": "Scrambled Eggs on Toast",
             "description": "A classic breakfast dish.",
+            "type": "meal",
             "components": [
                 {
                     "name": "Scrambled Eggs",
@@ -120,6 +122,7 @@ def sample_meal_for_context() -> Meal:
     return Meal(
         name="Chicken Dish",
         description="A simple dish with chicken.",
+        meal_type=MealType.MEAL,
         component_list=[component],
     )
 

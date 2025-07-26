@@ -1,6 +1,7 @@
 import pytest
 import uuid
 from unittest.mock import AsyncMock, MagicMock
+from src.meal_generator.models import MealType
 from src.meal_generator.meal import (
     Meal,
     DuplicateComponentIDError,
@@ -16,6 +17,7 @@ def sample_meal(meal_component_fixt: MealComponent) -> Meal:
     return Meal(
         name="Chicken Salad",
         description="A simple chicken salad.",
+        meal_type=MealType.MEAL,
         component_list=[meal_component_fixt],
     )
 
@@ -37,7 +39,12 @@ def test_meal_creation(sample_meal: Meal):
 def test_meal_creation_invalid(name, description, components, error):
     """Tests that invalid initialization parameters raise a ValueError."""
     with pytest.raises(ValueError, match=error):
-        Meal(name=name, description=description, component_list=components)
+        Meal(
+            name=name,
+            description=description,
+            meal_type=MealType.MEAL,
+            component_list=components,
+        )
 
 
 def test_aggregate_nutrients():
@@ -48,7 +55,7 @@ def test_aggregate_nutrients():
     component2 = MealComponent(
         "C2", "1", 50, NutrientProfile(energy=50, protein=5, contains_gluten=True)
     )
-    meal = Meal("Test Meal", "Desc", [component1, component2])
+    meal = Meal("Test Meal", "Desc", MealType.MEAL, [component1, component2])
 
     assert meal.nutrient_profile.energy == 150.0
     assert meal.nutrient_profile.protein == 15.0
