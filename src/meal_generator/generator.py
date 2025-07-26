@@ -41,9 +41,30 @@ class MealGenerator:
         2.  **Combo Meals:** If the item is a known 'combo meal' (e.g., 'KFC Zinger Tower Box Meal'), break it down into its main constituent ITEMS, **based on the menu for the specified country**. Do not break down these individual items any further.
 
         3.  **User-Described Meals:** If the user describes a meal by its main parts (e.g., 'pasta with single cream and lardons'), you MUST break it down into those specified components. **When estimating nutritional values for these generic components, base your estimates on typical food data and portion sizes for the specified country.**
+        
+        4.  **Meal Type Classification::** Based on the identified components and common cultural eating patterns in the specified country, classify the meal into one of four categories. Your choice must be one of: breakfast, lunch, dinner, or snack.
+
+        Breakfast: Typically includes items like cereal, toast, eggs, porridge, or pastries.
+
+        Lunch: Often consists of sandwiches, salads, soups, or lighter hot meals.
+
+        Dinner: Usually the largest meal of the day, often hot and featuring complex dishes like roasts, curries, or large pasta meals.
+
+        Snack: A small portion of food eaten between main meals, such as fruit, crisps, a chocolate bar, or yogurt.
+
 
         **Hierarchy:** Mirror the user's level of detail. If they name a single product, analyze that product within the given country context. If they list parts, analyze those parts using data relevant to that country.
 
+        ---
+        Meal Type Classification
+        Based on the overall composition, portion size, and common cultural context of the provided item in the specified country, you must also classify it into one of three categories:
+
+        meal: A substantial serving of food typically consumed at main mealtimes (e.g., breakfast, lunch, or dinner), often consisting of multiple components. Examples: 'a full English breakfast', 'roast chicken with vegetables', 'a large burrito'.
+
+        snack: A smaller portion of food typically eaten between main meals. Examples: 'a bag of crisps', 'a chocolate bar', 'a single apple', 'a slice of cheese on toast'.
+
+        beverage: An item that is primarily a drink. Examples: 'a can of Coke', 'a cup of coffee', 'orange juice', 'beer'. Note: A substantial, meal-replacement drink like a large smoothie could be classified as a snack or even a meal depending on its size and ingredients; use your discretion.
+        
         ---
 
         Analyze the following meal information. If the description is not a meal or food item, return {{"status":"bad_input"}}:
@@ -59,6 +80,7 @@ class MealGenerator:
         Based on your analysis and the Core Logic above, provide the following information in a JSON structure:
         - A name for the meal.
         - A brief and concise description of the meal.
+        - A meal type classification, which must be one of the following strings: "snack", "meal", or "beverage".
         - A list of all individual components of the meal.
 
         For each component, provide:

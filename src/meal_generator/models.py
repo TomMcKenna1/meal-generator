@@ -9,6 +9,10 @@ class _GenerationStatus(enum.Enum):
     OK = "ok"
     BAD_INPUT = "bad_input"
 
+class MealType(enum.Enum):
+    SNACK = "snack"
+    MEAL = "meal"
+    BEVERAGE = "beverage"
 
 class _NutrientProfile(BaseModel):
     """
@@ -72,6 +76,7 @@ class _Meal(BaseModel):
     )
     name: str
     description: str
+    type: MealType
     components: List[_Component]
 
 

@@ -4,7 +4,7 @@ from typing import List, Dict, Any, TYPE_CHECKING
 from .mappable import _PydanticMappable
 from .meal_component import MealComponent
 from .nutrient_profile import NutrientProfile
-from .models import _Meal
+from .models import _Meal, MealType
 
 if TYPE_CHECKING:
     from .generator import MealGenerator
@@ -35,7 +35,7 @@ class Meal(_PydanticMappable):
     """
 
     def __init__(
-        self, name: str, description: str, component_list: List[MealComponent]
+        self, name: str, description: str, meal_type: MealType, component_list: List[MealComponent]
     ):
         if not name:
             raise ValueError("Meal name cannot be empty.")
@@ -47,6 +47,7 @@ class Meal(_PydanticMappable):
         self.id: uuid.UUID = uuid.uuid4()
         self.name: str = name
         self.description: str = description
+        self.type: MealType = meal_type
         self._components: dict[uuid.UUID, MealComponent] = {
             component.id: component for component in component_list
         }
@@ -67,6 +68,7 @@ class Meal(_PydanticMappable):
             "id": str(self.id),
             "name": self.name,
             "description": self.description,
+            "type": self.type,
             "nutrient_profile": self.nutrient_profile.as_dict(),
             "components": [component.as_dict() for component in self.component_list],
         }
@@ -158,6 +160,7 @@ class Meal(_PydanticMappable):
         return cls(
             name=pydantic_meal.name,
             description=pydantic_meal.description,
+            meal_type=pydantic_meal.type,
             component_list=components,
         )
 
