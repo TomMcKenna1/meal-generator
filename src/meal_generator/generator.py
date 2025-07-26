@@ -32,23 +32,29 @@ class MealGenerator:
     _PROMPT_TEMPLATE = """
         You are a sophisticated Food and Nutrition Intelligence Engine. Your primary goal is to analyze a natural language description of a meal and identify its main, user-level components, then return a single, well-formed JSON object.
 
+        **You will be provided with a meal description and a country of origin in ISO 3166-2 format. This country is critical for your analysis, as food products, recipes, and nutritional standards vary internationally.**
+
         Your analysis must follow this Core Logic:
 
-        1.  **Pre-defined and Branded Items:** If an item is a specific, well-known product from a brand or restaurant (e.g., 'Dominos Mighty Meaty pizza', 'Big Mac', 'Tesco Finest Lasagne'), you must treat the **entire item as a SINGLE component**. DO NOT break it down into its base ingredients (like flour, tomato sauce, cheese, etc.). Your task is to find the nutritional information for the product as a whole.
+        1.  **Pre-defined and Branded Items:** If an item is a specific, well-known product (e.g., 'Dominos Mighty Meaty pizza'), treat it as a SINGLE component. DO NOT break it down into base ingredients. You must find the nutritional information for that specific product **as sold in the specified country**. For example, a 'Mighty Meaty' from the 'United Kingdom' will have different values than one from the 'United States'.
 
-        2.  **Combo Meals:** If the item is a known 'combo meal' or 'box meal' (e.g., 'KFC Zinger Tower Box Meal', 'McDonald's Big Mac Meal'), you must break it down into its main constituent **ITEMS** (e.g., 'Zinger Tower Burger', 'Regular Fries', 'Pepsi Max'). Do not break down these individual items any further.
+        2.  **Combo Meals:** If the item is a known 'combo meal' (e.g., 'KFC Zinger Tower Box Meal'), break it down into its main constituent ITEMS, **based on the menu for the specified country**. Do not break down these individual items any further.
 
-        3.  **User-Described Meals:** If the user describes a meal by explicitly listing its main parts (e.g., 'a meal of chicken breast, rice, and broccoli' or 'pasta with single cream and lardons'), you MUST break the meal down into those specified components ('chicken breast', 'rice', 'broccoli' or 'pasta', 'single cream', 'lardons'). This rule applies when the user is effectively giving you the recipe or the contents of their plate, rather than naming a pre-made product.
+        3.  **User-Described Meals:** If the user describes a meal by its main parts (e.g., 'pasta with single cream and lardons'), you MUST break it down into those specified components. **When estimating nutritional values for these generic components, base your estimates on typical food data and portion sizes for the specified country.**
 
-        **Hierarchy:** In essence, you should mirror the level of detail provided by the user. If they name a single product, analyze that product. If they list the parts, analyze those parts.
+        **Hierarchy:** Mirror the user's level of detail. If they name a single product, analyze that product within the given country context. If they list parts, analyze those parts using data relevant to that country.
 
         ---
 
-        Analyze the following meal description enclosed in <user_input> tags. If the description is not a meal or food item, return {{"status":"bad_input"}}:
+        Analyze the following meal information. If the description is not a meal or food item, return {{"status":"bad_input"}}:
 
-        <user_input>
-        "{natural_language_string}"
-        </user_input>
+        **<meal_description>**
+        **"{natural_language_string}"**
+        **</meal_description>**
+
+        **<country_of_origin>**
+        **"{country_ISO_3166_2}"**
+        **</country_of_origin>**
 
         Based on your analysis and the Core Logic above, provide the following information in a JSON structure:
         - A name for the meal.
@@ -64,14 +70,14 @@ class MealGenerator:
 
         The nutrient profile for each component must include estimates for:
         - energy (in kcal)
-        - fat (in grams)
+        - fats (in grams)
         - saturatedFats (in grams)
         - carbohydrates (in grams)
         - sugars (in grams)
         - fibre (in grams)
         - protein (in grams)
         - salt (in grams)
-        - Allergen and sensitivity information (as booleans):
+        Allergen and sensitivity information (as booleans):
         - containsDairy, containsHighDairy
         - containsGluten, containsHighGluten
         - containsHistamines, containsHighHistamines
@@ -166,7 +172,7 @@ class MealGenerator:
             **kwargs,
         )
 
-    def _create_prompt(self, natural_language_string: str) -> str:
+    def _create_prompt(self, natural_language_string: str, country_code: str) -> str:
         """
         Constructs the detailed prompt for the Generative AI model.
 
@@ -178,10 +184,13 @@ class MealGenerator:
         """
         # Escape tags to prevent prompt injection
         return self._PROMPT_TEMPLATE.format(
-            natural_language_string=html.escape(natural_language_string)
+            natural_language_string=html.escape(natural_language_string),
+            country_ISO_3166_2=html.escape(country_code),
         )
 
-    def _create_component_prompt(self, natural_language_string: str, meal: Meal) -> str:
+    def _create_component_prompt(
+        self, natural_language_string: str, meal: Meal, country_code: str
+    ) -> str:
         """
         Constructs the detailed prompt for generating a single component.
         """
@@ -194,6 +203,7 @@ class MealGenerator:
             meal_description=meal.description,
             existing_components=existing_components,
             natural_language_string=html.escape(natural_language_string),
+            country_ISO_3166_2=html.escape(country_code),
         )
 
     def _call_ai_model(
@@ -276,7 +286,9 @@ class MealGenerator:
         except Exception as e:
             raise MealGenerationError(f"Failed to process the AI response: {e}") from e
 
-    def generate_meal(self, natural_language_string: str) -> Meal:
+    def generate_meal(
+        self, natural_language_string: str, country_code: str = "US"
+    ) -> Meal:
         """
         Takes a natural language string, sends it to the Generative AI model,
         and returns a structured Meal object.
@@ -300,12 +312,14 @@ class MealGenerator:
                 "Natural language string cannot be empty for meal generation."
             )
 
-        prompt = self._create_prompt(natural_language_string)
+        prompt = self._create_prompt(natural_language_string, country_code)
         config = self._create_model_config(response_schema=_MealResponse)
         json_response_string = self._call_ai_model(prompt, config)
         return self._process_response(Meal, _MealResponse, json_response_string)
 
-    async def generate_meal_async(self, natural_language_string: str) -> Meal:
+    async def generate_meal_async(
+        self, natural_language_string: str, country_code: str = "US"
+    ) -> Meal:
         """
         Asynchronous version of generate_meal.
 
@@ -325,13 +339,13 @@ class MealGenerator:
         """
         if not natural_language_string:
             raise ValueError("Natural language string cannot be empty.")
-        prompt = self._create_prompt(natural_language_string)
+        prompt = self._create_prompt(natural_language_string, country_code)
         config = self._create_model_config(response_schema=_MealResponse)
         json_response_string = await self._call_ai_model_async(prompt, config)
         return self._process_response(Meal, _MealResponse, json_response_string)
 
     def generate_component(
-        self, natural_language_string: str, meal: Meal
+        self, natural_language_string: str, meal: Meal, country_code: str = "US"
     ) -> MealComponent:
         """
         Generates a single MealComponent from a natural language string in the context of an existing meal.
@@ -345,7 +359,9 @@ class MealGenerator:
         """
         if not natural_language_string:
             raise ValueError("Natural language string cannot be empty.")
-        prompt = self._create_component_prompt(natural_language_string, meal)
+        prompt = self._create_component_prompt(
+            natural_language_string, meal, country_code
+        )
         config = self._create_model_config(response_schema=_ComponentResponse)
         json_response_string = self._call_ai_model(prompt, config)
         return self._process_response(
@@ -353,7 +369,7 @@ class MealGenerator:
         )
 
     async def generate_component_async(
-        self, natural_language_string: str, meal: Meal
+        self, natural_language_string: str, meal: Meal, country_code: str = "US"
     ) -> MealComponent:
         """
         Asynchronous version of generate_component.
@@ -367,7 +383,9 @@ class MealGenerator:
         """
         if not natural_language_string:
             raise ValueError("Natural language string cannot be empty.")
-        prompt = self._create_component_prompt(natural_language_string, meal)
+        prompt = self._create_component_prompt(
+            natural_language_string, meal, country_code
+        )
         config = self._create_model_config(response_schema=_ComponentResponse)
         json_response_string = await self._call_ai_model_async(prompt, config)
         return self._process_response(
