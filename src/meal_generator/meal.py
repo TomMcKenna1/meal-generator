@@ -101,7 +101,7 @@ class Meal(_PydanticMappable):
         new_component = meal_generator.generate_component(natural_language_string, self)
         self.add_component(new_component)
         return self
-    
+
     async def add_component_from_string_async(
         self, natural_language_string: str, meal_generator: "MealGenerator"
     ) -> "Meal":
@@ -115,7 +115,9 @@ class Meal(_PydanticMappable):
         Returns:
             Meal: The modified meal with the new component.
         """
-        new_component = await meal_generator.generate_component_async(natural_language_string, self)
+        new_component = await meal_generator.generate_component_async(
+            natural_language_string, self
+        )
         self.add_component(new_component)
         return self
 
