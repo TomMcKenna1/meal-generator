@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "meal-generator"
-version = "1.5.1"
+version = "1.5.2"
 authors = [
   { name="Tom McKenna", email="tom2mckenna@gmail.com" },
 ]
