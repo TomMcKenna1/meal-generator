@@ -18,8 +18,15 @@ class MealComponent(_PydanticMappable):
         total_weight: float,
         nutrient_profile: NutrientProfile,
         brand: Optional[str] = None,
+        id: Optional[str] = None,
     ):
-        self.id: uuid.UUID = uuid.uuid4()
+        if id:
+            try:
+                self.id: uuid.UUID = uuid.UUID(id)
+            except ValueError:
+                raise ValueError("Provided ID must be a valid UUID string.")
+        else:
+            self.id: uuid.UUID = uuid.uuid4()
         self.name = name
         self.brand = brand
         self.quantity = quantity
