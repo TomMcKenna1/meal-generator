@@ -35,7 +35,11 @@ class Meal(_PydanticMappable):
     """
 
     def __init__(
-        self, name: str, description: str, meal_type: MealType, component_list: List[MealComponent]
+        self,
+        name: str,
+        description: str,
+        meal_type: MealType,
+        component_list: List[MealComponent],
     ):
         if not name:
             raise ValueError("Meal name cannot be empty.")

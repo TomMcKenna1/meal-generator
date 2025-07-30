@@ -87,6 +87,7 @@ class MealGenerator:
         - The name of the ingredient.
         - The brand (if specified, otherwise null).
         - The quantity as described in the text (e.g., "1 cup", "2 slices", "1 regular portion").
+        - The component's type, which must be one of the following strings: "food" or "beverage".
         - The total weight in grams (provide a reasonable estimate, e.g., 120.5).
         - A detailed nutrient profile.
 
@@ -131,6 +132,7 @@ class MealGenerator:
         - The name of the ingredient.
         - The brand (if specified, otherwise null).
         - The quantity as described in the text (e.g., "1 tbsp", "a handful").
+        - The component's type, which must be one of the following strings: "food" or "beverage".
         - The total weight in grams (provide a reasonable estimate, e.g., 14.2).
         - A detailed nutrient profile.
 

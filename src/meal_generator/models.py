@@ -9,10 +9,21 @@ class _GenerationStatus(enum.Enum):
     OK = "ok"
     BAD_INPUT = "bad_input"
 
+
 class MealType(enum.Enum):
     SNACK = "snack"
     MEAL = "meal"
     BEVERAGE = "beverage"
+
+
+class ComponentType(enum.Enum):
+    """
+    Specifies whether a meal component is a food or a beverage.
+    """
+
+    FOOD = "food"
+    BEVERAGE = "beverage"
+
 
 class _NutrientProfile(BaseModel):
     """
@@ -62,6 +73,7 @@ class _Component(BaseModel):
     brand: Optional[str] = None
     quantity: str
     total_weight: float
+    type: ComponentType
     nutrient_profile: _NutrientProfile
 
 

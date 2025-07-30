@@ -1,13 +1,12 @@
 import pytest
 import json
 from unittest.mock import AsyncMock, patch, MagicMock
-from src.meal_generator.models import MealType
+from src.meal_generator.models import ComponentType, MealType
 from src.meal_generator.generator import MealGenerator, MealGenerationError
 from src.meal_generator.meal import Meal
 from src.meal_generator.meal_component import MealComponent
 from src.meal_generator.nutrient_profile import NutrientProfile
 
-# Corrected error scenarios to match exact exception messages from the code
 ERROR_SCENARIOS = [
     (
         '{"status": "bad_input"}',
@@ -18,7 +17,7 @@ ERROR_SCENARIOS = [
         "AI response status was 'ok' but no object data was provided.",
     ),
     (
-        '{"status": "ok", "result": {"name": "x", "description": "y", "components": [{"name": "c", "quantity": "1", "totalWeight": 1.0, "nutrientProfile": {"energy": "invalid"}}]}}',
+        '{"status": "ok", "result": {"name": "x", "description": "y", "type": "meal", "components": [{"name": "c", "type": "meal", "quantity": "1", "totalWeight": 1.0, "nutrientProfile": {"energy": "invalid"}}]}}',
         "AI response failed validation",
     ),
     (
@@ -48,6 +47,7 @@ def valid_api_response() -> dict:
                     "name": "Scrambled Eggs",
                     "brand": None,
                     "quantity": "2 large",
+                    "type": "food",
                     "totalWeight": 120.0,
                     "nutrientProfile": {
                         "energy": 180.0,
@@ -65,6 +65,7 @@ def valid_api_response() -> dict:
                     "name": "Whole Wheat Toast",
                     "brand": "Hovis",
                     "quantity": "2 slices",
+                    "type": "food",
                     "totalWeight": 60.0,
                     "nutrientProfile": {
                         "energy": 160.0,
@@ -95,6 +96,7 @@ def valid_component_api_response() -> dict:
             "name": "Olive Oil",
             "brand": "Extra Virgin",
             "quantity": "1 tbsp",
+            "type": "food",
             "totalWeight": 14.0,
             "nutrientProfile": {
                 "energy": 120.0,
@@ -114,10 +116,11 @@ def valid_component_api_response() -> dict:
 def sample_meal_for_context() -> Meal:
     """Provides a sample Meal instance to be used as context."""
     component = MealComponent(
-        "Grilled Chicken Breast",
-        "1 breast",
-        120,
-        NutrientProfile(energy=150, protein=30),
+        name="Grilled Chicken Breast",
+        quantity="1 breast",
+        total_weight=120,
+        component_type=ComponentType.FOOD,
+        nutrient_profile=NutrientProfile(energy=150, protein=30),
     )
     return Meal(
         name="Chicken Dish",
@@ -140,6 +143,7 @@ def test_generate_meal_success(mock_genai: MagicMock, valid_api_response: dict):
     assert isinstance(meal, Meal)
     assert meal.name == "Scrambled Eggs on Toast"
     assert len(meal.component_list) == 2
+    assert meal.component_list[0].type == ComponentType.FOOD
     assert meal.nutrient_profile.energy == 340.0
     assert meal.nutrient_profile.protein == 23.0
     assert meal.nutrient_profile.contains_gluten is True
@@ -193,6 +197,7 @@ async def test_generate_meal_async_success(
     assert isinstance(meal, Meal)
     assert meal.name == "Scrambled Eggs on Toast"
     assert len(meal.component_list) == 2
+    assert meal.component_list[0].type == ComponentType.FOOD
     assert meal.nutrient_profile.energy == 340.0
     assert meal.nutrient_profile.protein == 23.0
     assert meal.nutrient_profile.contains_gluten is True
@@ -249,6 +254,7 @@ def test_generate_component_success(
     mock_genai.Client.return_value.models.generate_content.assert_called_once()
     assert isinstance(component, MealComponent)
     assert component.name == "Olive Oil"
+    assert component.type == ComponentType.FOOD
     assert component.nutrient_profile.energy == 120.0
     assert component.total_weight == 14.0
 
@@ -275,6 +281,7 @@ async def test_generate_component_async_success(
     mock_genai.Client.return_value.aio.models.generate_content.assert_awaited_once()
     assert isinstance(component, MealComponent)
     assert component.name == "Olive Oil"
+    assert component.type == ComponentType.FOOD
     assert component.nutrient_profile.energy == 120.0
     assert component.total_weight == 14.0
 
