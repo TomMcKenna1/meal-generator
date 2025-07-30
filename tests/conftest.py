@@ -1,6 +1,7 @@
 import pytest
 from src.meal_generator.nutrient_profile import NutrientProfile
 from src.meal_generator.meal_component import MealComponent
+from src.meal_generator.models import ComponentType
 
 
 @pytest.fixture
@@ -27,6 +28,7 @@ def meal_component_fixt(nutrient_profile_fixt: NutrientProfile) -> MealComponent
         name="Grilled Chicken Breast",
         quantity="1 breast",
         total_weight=120.0,
+        component_type=ComponentType.FOOD,
         nutrient_profile=nutrient_profile_fixt,
         brand="Farm Fresh",
     )

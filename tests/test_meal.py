@@ -1,7 +1,7 @@
 import pytest
 import uuid
 from unittest.mock import AsyncMock, MagicMock
-from src.meal_generator.models import MealType
+from src.meal_generator.models import MealType, ComponentType
 from src.meal_generator.meal import (
     Meal,
     DuplicateComponentIDError,
@@ -50,10 +50,18 @@ def test_meal_creation_invalid(name, description, components, error):
 def test_aggregate_nutrients():
     """Tests the nutrient aggregation logic."""
     component1 = MealComponent(
-        "C1", "1", 100, NutrientProfile(energy=100, protein=10, contains_dairy=True)
+        "C1",
+        "1",
+        100,
+        ComponentType.FOOD,
+        NutrientProfile(energy=100, protein=10, contains_dairy=True),
     )
     component2 = MealComponent(
-        "C2", "1", 50, NutrientProfile(energy=50, protein=5, contains_gluten=True)
+        "C2",
+        "1",
+        50,
+        ComponentType.FOOD,
+        NutrientProfile(energy=50, protein=5, contains_gluten=True),
     )
     meal = Meal("Test Meal", "Desc", MealType.MEAL, [component1, component2])
 
@@ -67,7 +75,9 @@ def test_aggregate_nutrients():
 def test_add_component(sample_meal: Meal):
     """Tests adding a component to a meal."""
     initial_energy = sample_meal.nutrient_profile.energy
-    new_component = MealComponent("Lettuce", "50g", 50, NutrientProfile(energy=10))
+    new_component = MealComponent(
+        "Lettuce", "50g", 50, ComponentType.FOOD, NutrientProfile(energy=10)
+    )
 
     sample_meal.add_component(new_component)
 
@@ -82,6 +92,7 @@ def test_add_component_from_string(sample_meal: Meal):
         name="A dollop of mayo",
         quantity="1 tbsp",
         total_weight=15,
+        component_type=ComponentType.FOOD,
         nutrient_profile=NutrientProfile(energy=100, fats=11),
     )
     mock_generator.generate_component.return_value = new_component
@@ -107,6 +118,7 @@ async def test_add_component_from_string_async(sample_meal: Meal):
         name="A dollop of mayo",
         quantity="1 tbsp",
         total_weight=15,
+        component_type=ComponentType.FOOD,
         nutrient_profile=NutrientProfile(energy=100, fats=11),
     )
     mock_generator.generate_component_async = AsyncMock(return_value=new_component)
@@ -141,7 +153,7 @@ def test_add_duplicate_component_raises_error(
 def test_remove_component(sample_meal: Meal, meal_component_fixt: MealComponent):
     """Tests removing a component and verifies nutrient recalculation."""
     new_component = MealComponent(
-        "Tomato", "30g", 30, NutrientProfile(energy=15, protein=1)
+        "Tomato", "30g", 30, ComponentType.FOOD, NutrientProfile(energy=15, protein=1)
     )
     sample_meal.add_component(new_component)
 
