@@ -3,22 +3,26 @@ import json
 import logging
 import dataclasses
 import asyncio
-from typing import Dict, Any, Optional
+from typing import Any, Optional, List
 
 from google import genai
 from google.genai import types
 from pydantic import ValidationError
 
-from .mappable import _PydanticMappable
 from .meal import Meal
+from .meal_component import MealComponent
 from .retriever import Retriever
-from .prompts import IDENTIFY_AND_DECOMPOSE_PROMPT, HYBRID_SYNTHESIS_PROMPT
+from .prompts import (
+    IDENTIFY_AND_DECOMPOSE_PROMPT,
+    HYBRID_SYNTHESIS_PROMPT,
+    SYNTHESIZE_COMPONENTS_PROMPT,
+)
 from .models import (
     _AIResponse,
     _GenerationStatus,
     _MealResponse,
     _IdentificationResponse,
-    DataSource,
+    _ComponentListResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -29,23 +33,36 @@ class MealGenerationError(Exception):
 
 
 class MealGenerator:
-    _MODEL_NAME = "gemini-2.5-flash"
+    _MODEL_NAME = "gemini-1.5-flash"
 
     def __init__(self, api_key: Optional[str] = None):
-        """
-        MODIFIED: Initializes the MealGenerator using the new genai.Client pattern.
-        """
         if api_key:
             self._genai_client = genai.Client(api_key=api_key)
         else:
-            # Infer API from environment variable if not provided
             self._genai_client = genai.Client()
-
         self._retriever = Retriever()
         logger.info(f"MealGenerator initialized for model '{self._MODEL_NAME}'.")
 
     def _create_model_config(self, **kwargs) -> types.GenerationConfig:
-        return types.GenerationConfig(
+        return types.GenerateContentConfig(
+            safety_settings=[
+                types.SafetySetting(
+                    category="HARM_CATEGORY_HARASSMENT",
+                    threshold="BLOCK_LOW_AND_ABOVE",
+                ),
+                types.SafetySetting(
+                    category="HARM_CATEGORY_HATE_SPEECH",
+                    threshold="BLOCK_LOW_AND_ABOVE",
+                ),
+                types.SafetySetting(
+                    category="HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                    threshold="BLOCK_LOW_AND_ABOVE",
+                ),
+                types.SafetySetting(
+                    category="HARM_CATEGORY_DANGEROUS_CONTENT",
+                    threshold="BLOCK_LOW_AND_ABOVE",
+                ),
+            ],
             response_mime_type="application/json",
             **kwargs,
         )
@@ -53,10 +70,8 @@ class MealGenerator:
     async def _call_ai_model_async(
         self, prompt: str, config: types.GenerationConfig
     ) -> str:
-        """Async version of the AI model call using the new client syntax."""
         try:
             logger.debug("Sending async request to Generative AI model.")
-            # MODIFIED: Uses the new asynchronous client method.
             response = await self._genai_client.aio.models.generate_content(
                 model=self._MODEL_NAME,
                 contents=prompt,
@@ -71,15 +86,17 @@ class MealGenerator:
             ) from e
 
     def _process_response(
-        self, return_model: _PydanticMappable, result_model: _AIResponse, json_str: str
-    ) -> Meal:
-        """Helper to process and validate the JSON response from the AI model."""
+        self,
+        return_model_cls: type,
+        pydantic_response_model: _AIResponse,
+        json_str: str,
+    ) -> Any:
         try:
-            pydantic_response = result_model.model_validate_json(json_str)
+            pydantic_response = pydantic_response_model.model_validate_json(json_str)
             if pydantic_response.status == _GenerationStatus.BAD_INPUT:
                 raise MealGenerationError("Input was determined to be malicious.")
             if pydantic_response.result:
-                return return_model.from_pydantic(pydantic_response.result)
+                return return_model_cls.from_pydantic(pydantic_response.result)
             raise MealGenerationError(
                 "AI response status was 'ok' but no result was provided."
             )
@@ -91,51 +108,21 @@ class MealGenerator:
     async def generate_meal_async(
         self, natural_language_string: str, country_code: str = "GB"
     ) -> Meal:
-        """
-        Generates a Meal using the fully asynchronous hybrid RAG pipeline.
-        """
-        if not natural_language_string:
-            raise ValueError("Natural language string cannot be empty.")
-
         logger.info(
             f"Starting async meal generation for query: '{natural_language_string}'"
         )
-
         try:
-            # Step 1: Identify and Decompose Components
-            logger.info("Step 1: Identifying and decomposing components.")
-            id_prompt = IDENTIFY_AND_DECOMPOSE_PROMPT.format(
-                natural_language_string=html.escape(natural_language_string)
-            )
-            id_config = self._create_model_config(
-                response_schema=_IdentificationResponse
-            )
-            id_response_str = await self._call_ai_model_async(id_prompt, id_config)
-            identified_components = _IdentificationResponse.model_validate_json(
-                id_response_str
-            ).components
-            logger.info(
-                f"Identified {len(identified_components)} individual components to process."
-            )
-
-            # Step 2: Build Context Concurrently
-            logger.info("Step 2: Retrieving context for all components concurrently.")
-            context_for_synthesis = (
-                await self._retriever.process_components_concurrently(
-                    identified_components, country_code
+            context_for_synthesis, identified_components = (
+                await self._identify_and_retrieve_async(
+                    natural_language_string, country_code
                 )
             )
-            logger.info(
-                f"Context retrieval complete. Found data for {len(context_for_synthesis)} components."
-            )
 
-            # Step 3: Synthesize Final Meal
             logger.info("Step 3: Synthesizing final meal object.")
-            context_data_json = json.dumps(context_for_synthesis, indent=2)
             synth_prompt = HYBRID_SYNTHESIS_PROMPT.format(
                 natural_language_string=html.escape(natural_language_string),
                 country_ISO_3166_2=html.escape(country_code),
-                context_data_json=context_data_json,
+                context_data_json=json.dumps(context_for_synthesis, indent=2),
             )
             synth_config = self._create_model_config(response_schema=_MealResponse)
             final_response_str = await self._call_ai_model_async(
@@ -144,27 +131,129 @@ class MealGenerator:
 
             final_meal = self._process_response(Meal, _MealResponse, final_response_str)
 
-            # Step 4: Post-processing
-            logger.info(
-                "Step 4: Assigning deterministic data sources to final components."
+            self._post_process_meal(final_meal, context_for_synthesis)
+            logger.info("Successfully generated final meal object.")
+            return final_meal
+        except Exception as e:
+            logger.error("Async meal generation pipeline failed.", exc_info=True)
+            raise e
+
+    # --- NEW: Implemented Component Generation Methods ---
+
+    def generate_component(
+        self, natural_language_string: str, country_code: str = "GB"
+    ) -> List[MealComponent]:
+        """Synchronous wrapper for generate_component_async."""
+        logger.info("Running generate_component synchronously.")
+        return asyncio.run(
+            self.generate_component_async(natural_language_string, country_code)
+        )
+
+    async def generate_component_async(
+        self, natural_language_string: str, country_code: str = "GB"
+    ) -> List[MealComponent]:
+        """Generates a list of MealComponents from a natural language string."""
+        logger.info(
+            f"Starting async component generation for query: '{natural_language_string}'"
+        )
+        try:
+            context_for_synthesis, identified_components = (
+                await self._identify_and_retrieve_async(
+                    natural_language_string, country_code
+                )
             )
-            data_source_map = {
-                item.get("user_query"): item.get("data_source")
-                for item in context_for_synthesis
-            }
-            for component in final_meal.component_list:
-                # Use the original component query to find its determined data source
-                source = data_source_map.get(component.name, DataSource.ESTIMATED_MODEL)
+
+            logger.info("Step 3: Synthesizing new component object(s).")
+            synth_prompt = SYNTHESIZE_COMPONENTS_PROMPT.format(
+                natural_language_string=html.escape(natural_language_string),
+                country_ISO_3166_2=html.escape(country_code),
+                context_data_json=json.dumps(context_for_synthesis, indent=2),
+            )
+            synth_config = self._create_model_config(
+                response_schema=_ComponentListResponse
+            )
+            final_response_str = await self._call_ai_model_async(
+                synth_prompt, synth_config
+            )
+
+            pydantic_response = _ComponentListResponse.model_validate_json(
+                final_response_str
+            )
+            if (
+                pydantic_response.status != _GenerationStatus.OK
+                or not pydantic_response.result
+            ):
+                raise MealGenerationError(
+                    "Component synthesis failed or returned no result."
+                )
+
+            pydantic_components = pydantic_response.result.components
+            final_components = [
+                MealComponent.from_pydantic(c) for c in pydantic_components
+            ]
+
+            self._post_process_components(final_components, context_for_synthesis)
+            logger.info(
+                f"Successfully generated {len(final_components)} new component(s)."
+            )
+            return final_components
+        except Exception as e:
+            logger.error("Async component generation pipeline failed.", exc_info=True)
+            raise e
+
+    async def _identify_and_retrieve_async(
+        self, natural_language_string: str, country_code: str
+    ) -> tuple[list, list]:
+        """Helper to run the shared identification and retrieval steps."""
+        logger.info("Step 1: Identifying and decomposing components.")
+        id_prompt = IDENTIFY_AND_DECOMPOSE_PROMPT.format(
+            natural_language_string=html.escape(natural_language_string)
+        )
+        id_config = self._create_model_config(response_schema=_IdentificationResponse)
+        id_response_str = await self._call_ai_model_async(id_prompt, id_config)
+        identified_components = _IdentificationResponse.model_validate_json(
+            id_response_str
+        ).components
+        logger.info(
+            f"Identified {len(identified_components)} individual components to process."
+        )
+
+        logger.info("Step 2: Retrieving context for all components concurrently.")
+        context_for_synthesis = await self._retriever.process_components_concurrently(
+            identified_components, country_code
+        )
+        logger.info(
+            f"Context retrieval complete. Found data for {len(context_for_synthesis)} components."
+        )
+        return context_for_synthesis, identified_components
+
+    def _post_process_meal(self, meal: Meal, context: list):
+        """Helper to assign data sources to a full meal object."""
+        logger.info(
+            "Post-processing: Assigning deterministic data sources to final components."
+        )
+        data_source_map = {
+            item.get("user_query"): item.get("data_source") for item in context
+        }
+        for component in meal.component_list:
+            # Match by name, which is the user_query in this context
+            source = data_source_map.get(component.name)
+            if source:
                 updated_profile = dataclasses.replace(
                     component.nutrient_profile, data_source=source
                 )
                 component.nutrient_profile = updated_profile
+        meal.nutrient_profile = meal._calculate_aggregate_nutrients()
 
-            final_meal.nutrient_profile = final_meal._calculate_aggregate_nutrients()
-            logger.info("Successfully generated final meal object.")
-
-            return final_meal
-
-        except Exception as e:
-            logger.error("Async meal generation pipeline failed.", exc_info=True)
-            raise e
+    def _post_process_components(self, components: List[MealComponent], context: list):
+        """Helper to assign data sources to a list of components."""
+        data_source_map = {
+            item.get("user_query"): item.get("data_source") for item in context
+        }
+        for component in components:
+            source = data_source_map.get(component.name)
+            if source:
+                updated_profile = dataclasses.replace(
+                    component.nutrient_profile, data_source=source
+                )
+                component.nutrient_profile = updated_profile

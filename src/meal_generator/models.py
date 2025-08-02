@@ -34,7 +34,6 @@ class _NutrientProfile(BaseModel):
         alias_generator=to_camel,
         populate_by_name=True,
     )
-
     energy: float
     fats: float
     saturated_fats: float
@@ -61,15 +60,10 @@ class _NutrientProfile(BaseModel):
 
 
 class _Component(BaseModel):
-    """
-    Represents a component of a meal.
-    """
-
     model_config = ConfigDict(
         alias_generator=to_camel,
         populate_by_name=True,
     )
-
     name: str
     brand: Optional[str] = None
     quantity: str
@@ -84,19 +78,13 @@ class _Meal(BaseModel):
         alias_generator=to_camel,
         populate_by_name=True,
     )
-
     name: str
     description: str
     type: MealType
     components: List[_Component]
 
 
-# --- Models for the RAG Identification Step ---
-
-
 class _IdentifiedComponent(BaseModel):
-    """Represents a component identified for searching, now with quantity context."""
-
     model_config = ConfigDict(
         alias_generator=to_camel,
         populate_by_name=True,
@@ -107,12 +95,12 @@ class _IdentifiedComponent(BaseModel):
 
 
 class _IdentificationResponse(BaseModel):
-    """The expected response from the identification prompt."""
-
     components: List[_IdentifiedComponent]
 
 
-# --- Generic AI Response Models ---
+class _ComponentList(BaseModel):
+    components: List[_Component]
+
 
 ResultT = TypeVar("ResultT", bound=BaseModel)
 
@@ -123,4 +111,4 @@ class _AIResponse(BaseModel, Generic[ResultT]):
 
 
 _MealResponse = _AIResponse[_Meal]
-_ComponentResponse = _AIResponse[_Component]
+_ComponentListResponse = _AIResponse[_ComponentList]

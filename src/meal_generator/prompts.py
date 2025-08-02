@@ -59,3 +59,27 @@ For each component provided in the 'Component Data' list below, you must follow 
 
 Assemble the final meal object now, following the 4-step process for each component.
 """
+
+SYNTHESIZE_COMPONENTS_PROMPT = """
+You are an expert food scientist and nutritionist. Your task is to intelligently construct one or more food components from a user's request, using provided data as factual grounding.
+
+For each component provided in the 'Component Data' list below, you must follow the same **5-Step Process** as for a full meal:
+1.  Determine `totalWeight` based on `user_specified_quantity` and brand context.
+2.  Determine base per-100g nutrients from factual data, context, or general knowledge.
+3.  Scale the macros to the final `totalWeight`.
+4.  Perform a sanity check on all estimations.
+5.  Finalize all details (`name`, `brand`, `quantity`, `source_url`).
+
+**Output Format:**
+- You must return a single JSON object with one key: `"components"`.
+- The value of `"components"` must be a list of the fully-formed component objects you have constructed.
+
+**Contextual Information:**
+- The user wants to add this to an existing meal: "{natural_language_string}"
+- Country for estimation context: "{country_ISO_3166_2}"
+
+**Component Data (contains user queries and retrieved per-100g data):**
+{context_data_json}
+
+Assemble the final list of components now.
+"""

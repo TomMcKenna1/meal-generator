@@ -8,21 +8,35 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 
-if __name__ == "__main__":
-    logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+
+async def run_generator():
+    """
+    Main async function to generate a meal and test adding a new component.
+    """
+    generator = MealGenerator()
+
+    initial_query = (
+        "Dominos thin and crispy mighty meaty pizza and garlic and herb big dip"
     )
+    print(f"--- 1. GENERATING INITIAL MEAL for query: '{initial_query}' ---\n")
 
-    async def run_generator():
-        generator = MealGenerator()
-        query = "Dominos thin and crispy mighty meaty pizza ad garlic and herb big dip"
+    try:
+        meal = await generator.generate_meal_async(initial_query)
+        print("\n--- INITIAL MEAL CREATED ---\n")
+        print(meal.as_dict())
 
-        try:
-            print(f"--- Running query: '{query}' ---")
-            meal = await generator.generate_meal_async(query)
-            print("\n--- FINAL MEAL OUTPUT ---")
-            print(meal.as_dict())
-        except Exception as e:
-            print(f"An error occurred: {e}")
+        add_component_query = "and a can of coke zero"
+        print(f"\n--- 2. ADDING NEW COMPONENT for query: '{add_component_query}' ---\n")
 
+        await meal.add_component_from_string_async(add_component_query, generator)
+
+        print("\n--- UPDATED MEAL WITH NEW COMPONENT ---\n")
+        print(meal.as_dict())
+
+    except Exception as e:
+        logging.error("An error occurred during the generation process.", exc_info=True)
+        print(f"\n--- ERROR ---\nAn error occurred: {e}")
+
+
+if __name__ == "__main__":
     asyncio.run(run_generator())
