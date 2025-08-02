@@ -45,26 +45,7 @@ class MealGenerator:
         logger.info(f"MealGenerator initialized for model '{self._MODEL_NAME}'.")
 
     def _create_model_config(self, **kwargs) -> types.GenerationConfig:
-        """Creates the generation configuration for the AI model."""
-        return types.GenerateContentConfig(
-            safety_settings=[
-                types.SafetySetting(
-                    category="HARM_CATEGORY_HARASSMENT",
-                    threshold="BLOCK_LOW_AND_ABOVE",
-                ),
-                types.SafetySetting(
-                    category="HARM_CATEGORY_HATE_SPEECH",
-                    threshold="BLOCK_LOW_AND_ABOVE",
-                ),
-                types.SafetySetting(
-                    category="HARM_CATEGORY_SEXUALLY_EXPLICIT",
-                    threshold="BLOCK_LOW_AND_ABOVE",
-                ),
-                types.SafetySetting(
-                    category="HARM_CATEGORY_DANGEROUS_CONTENT",
-                    threshold="BLOCK_LOW_AND_ABOVE",
-                ),
-            ],
+        return types.GenerationConfig(
             response_mime_type="application/json",
             **kwargs,
         )
