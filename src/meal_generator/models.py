@@ -25,6 +25,7 @@ class DataSource(enum.Enum):
     """Specifies the origin of the nutritional data."""
 
     RETRIEVED_API = "retrieved_api"
+    ESTIMATED_WITH_CONTEXT = "estimated_with_context"
     ESTIMATED_MODEL = "estimated_model"
 
 
@@ -60,6 +61,10 @@ class _NutrientProfile(BaseModel):
 
 
 class _Component(BaseModel):
+    """
+    Represents a component of a meal.
+    """
+
     model_config = ConfigDict(
         alias_generator=to_camel,
         populate_by_name=True,
@@ -71,6 +76,7 @@ class _Component(BaseModel):
     total_weight: float
     type: ComponentType
     nutrient_profile: _NutrientProfile
+    source_url: Optional[str] = None
 
 
 class _Meal(BaseModel):
@@ -89,7 +95,7 @@ class _Meal(BaseModel):
 
 
 class _IdentifiedComponent(BaseModel):
-    """Represents a component identified for searching."""
+    """Represents a component identified for searching, now with quantity context."""
 
     model_config = ConfigDict(
         alias_generator=to_camel,
@@ -97,6 +103,7 @@ class _IdentifiedComponent(BaseModel):
     )
     query: str
     brand: Optional[str] = None
+    user_specified_quantity: Optional[str] = None
 
 
 class _IdentificationResponse(BaseModel):

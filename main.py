@@ -1,16 +1,28 @@
+import asyncio
+import logging
 from src.meal_generator.generator import MealGenerator
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+
 if __name__ == "__main__":
-    meal_generator = MealGenerator(api_key="AIzaSyC7uRxfnoTgWA6KbI2mqHdZfxFMfA6RWe0")
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+    )
 
-    meal_description = "medium pepperoni pizza with a burrata from Zia Lucia"
+    async def run_generator():
+        generator = MealGenerator()
+        query = "Dominos thin and crispy mighty meaty pizza ad garlic and herb big dip"
 
-    try:
-        meal = meal_generator.generate_meal(meal_description)
-        print("--- Meal Generated Successfully ---")
-        print(meal)
-        print("\n--- Meal as Dictionary ---")
-        for component in meal.component_list:
-            print(component.as_dict())
-    except Exception as e:
-        print(f"An error occurred: {e}")
+        try:
+            print(f"--- Running query: '{query}' ---")
+            meal = await generator.generate_meal_async(query)
+            print("\n--- FINAL MEAL OUTPUT ---")
+            print(meal.as_dict())
+        except Exception as e:
+            print(f"An error occurred: {e}")
+
+    asyncio.run(run_generator())

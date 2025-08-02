@@ -1,3 +1,5 @@
+# in meal_component.py
+
 from typing import Optional
 import uuid
 
@@ -19,6 +21,7 @@ class MealComponent(_PydanticMappable):
         component_type: ComponentType,
         nutrient_profile: NutrientProfile,
         brand: Optional[str] = None,
+        source_url: Optional[str] = None,  # NEW
         id: Optional[str] = None,
     ):
         if id:
@@ -34,6 +37,7 @@ class MealComponent(_PydanticMappable):
         self.total_weight = total_weight
         self.type = component_type
         self.nutrient_profile = nutrient_profile
+        self.source_url = source_url  # NEW
 
     def as_dict(self) -> dict:
         return {
@@ -43,6 +47,7 @@ class MealComponent(_PydanticMappable):
             "quantity": self.quantity,
             "total_weight": self.total_weight,
             "type": self.type.value,
+            "source_url": self.source_url,  # NEW
             "nutrient_profile": self.nutrient_profile.as_dict(),
         }
 
@@ -63,6 +68,7 @@ class MealComponent(_PydanticMappable):
             total_weight=pydantic_component.total_weight,
             component_type=pydantic_component.type,
             nutrient_profile=nutrient_profile_object,
+            source_url=pydantic_component.source_url,  # NEW
         )
 
     def __repr__(self) -> str:
