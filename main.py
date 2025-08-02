@@ -1,9 +1,9 @@
 from src.meal_generator.generator import MealGenerator
 
 if __name__ == "__main__":
-    meal_generator = MealGenerator()
+    meal_generator = MealGenerator(api_key="AIzaSyC7uRxfnoTgWA6KbI2mqHdZfxFMfA6RWe0")
 
-    meal_description = "large wrap with half a cup of rice, 100g of chilli, a tablespoon of soured cream"
+    meal_description = "medium pepperoni pizza with a burrata from Zia Lucia"
 
     try:
         meal = meal_generator.generate_meal(meal_description)

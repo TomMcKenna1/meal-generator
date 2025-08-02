@@ -17,19 +17,18 @@ class MealType(enum.Enum):
 
 
 class ComponentType(enum.Enum):
-    """
-    Specifies whether a meal component is a food or a beverage.
-    """
-
     FOOD = "food"
     BEVERAGE = "beverage"
 
 
-class _NutrientProfile(BaseModel):
-    """
-    Represents the nutrient profile of a meal component.
-    """
+class DataSource(enum.Enum):
+    """Specifies the origin of the nutritional data."""
 
+    RETRIEVED_API = "retrieved_api"
+    ESTIMATED_MODEL = "estimated_model"
+
+
+class _NutrientProfile(BaseModel):
     model_config = ConfigDict(
         alias_generator=to_camel,
         populate_by_name=True,
@@ -57,13 +56,10 @@ class _NutrientProfile(BaseModel):
     contains_high_capsaicin: bool = False
     is_processed: bool = False
     is_ultra_processed: bool = False
+    data_source: DataSource
 
 
 class _Component(BaseModel):
-    """
-    Represents a component of a meal.
-    """
-
     model_config = ConfigDict(
         alias_generator=to_camel,
         populate_by_name=True,
@@ -78,19 +74,38 @@ class _Component(BaseModel):
 
 
 class _Meal(BaseModel):
-    """
-    Represents a meal, including its components.
-    """
-
     model_config = ConfigDict(
         alias_generator=to_camel,
         populate_by_name=True,
     )
+
     name: str
     description: str
     type: MealType
     components: List[_Component]
 
+
+# --- Models for the RAG Identification Step ---
+
+
+class _IdentifiedComponent(BaseModel):
+    """Represents a component identified for searching."""
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+    )
+    query: str
+    brand: Optional[str] = None
+
+
+class _IdentificationResponse(BaseModel):
+    """The expected response from the identification prompt."""
+
+    components: List[_IdentifiedComponent]
+
+
+# --- Generic AI Response Models ---
 
 ResultT = TypeVar("ResultT", bound=BaseModel)
 
