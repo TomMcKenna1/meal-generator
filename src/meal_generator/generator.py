@@ -3,11 +3,11 @@ import json
 import logging
 import dataclasses
 import asyncio
-from typing import Any, Optional, List
+from typing import Any, Optional, List, Type, TypeVar
 
 from google import genai
 from google.genai import types
-from pydantic import ValidationError
+from pydantic import ValidationError, BaseModel
 
 from .meal import Meal
 from .meal_component import MealComponent
@@ -23,9 +23,13 @@ from .models import (
     _MealResponse,
     _IdentificationResponse,
     _ComponentListResponse,
+    _ComponentsIdentified,
 )
 
 logger = logging.getLogger(__name__)
+
+PydanticAIResponse = TypeVar("PydanticAIResponse", bound=_AIResponse)
+PydanticResult = TypeVar("PydanticResult", bound=BaseModel)
 
 
 class MealGenerationError(Exception):
@@ -33,7 +37,7 @@ class MealGenerationError(Exception):
 
 
 class MealGenerator:
-    _MODEL_NAME = "gemini-1.5-flash"
+    _MODEL_NAME = "gemini-2.5-flash"
 
     def __init__(self, api_key: Optional[str] = None):
         if api_key:
@@ -86,17 +90,18 @@ class MealGenerator:
             ) from e
 
     def _process_response(
-        self,
-        return_model_cls: type,
-        pydantic_response_model: _AIResponse,
-        json_str: str,
-    ) -> Any:
+        self, pydantic_response_model: Type[PydanticAIResponse], json_str: str
+    ) -> PydanticResult:
+        """
+        Validates and processes a JSON string against a Pydantic response model.
+        Checks for bad input status and returns the validated result object.
+        """
         try:
             pydantic_response = pydantic_response_model.model_validate_json(json_str)
             if pydantic_response.status == _GenerationStatus.BAD_INPUT:
                 raise MealGenerationError("Input was determined to be malicious.")
             if pydantic_response.result:
-                return return_model_cls.from_pydantic(pydantic_response.result)
+                return pydantic_response.result
             raise MealGenerationError(
                 "AI response status was 'ok' but no result was provided."
             )
@@ -112,10 +117,8 @@ class MealGenerator:
             f"Starting async meal generation for query: '{natural_language_string}'"
         )
         try:
-            context_for_synthesis, identified_components = (
-                await self._identify_and_retrieve_async(
-                    natural_language_string, country_code
-                )
+            context_for_synthesis, _ = await self._identify_and_retrieve_async(
+                natural_language_string, country_code
             )
 
             logger.info("Step 3: Synthesizing final meal object.")
@@ -129,7 +132,8 @@ class MealGenerator:
                 synth_prompt, synth_config
             )
 
-            final_meal = self._process_response(Meal, _MealResponse, final_response_str)
+            pydantic_meal = self._process_response(_MealResponse, final_response_str)
+            final_meal = Meal.from_pydantic(pydantic_meal)
 
             self._post_process_meal(final_meal, context_for_synthesis)
             logger.info("Successfully generated final meal object.")
@@ -137,8 +141,6 @@ class MealGenerator:
         except Exception as e:
             logger.error("Async meal generation pipeline failed.", exc_info=True)
             raise e
-
-    # --- NEW: Implemented Component Generation Methods ---
 
     def generate_component(
         self, natural_language_string: str, country_code: str = "GB"
@@ -157,10 +159,8 @@ class MealGenerator:
             f"Starting async component generation for query: '{natural_language_string}'"
         )
         try:
-            context_for_synthesis, identified_components = (
-                await self._identify_and_retrieve_async(
-                    natural_language_string, country_code
-                )
+            context_for_synthesis, _ = await self._identify_and_retrieve_async(
+                natural_language_string, country_code
             )
 
             logger.info("Step 3: Synthesizing new component object(s).")
@@ -176,20 +176,11 @@ class MealGenerator:
                 synth_prompt, synth_config
             )
 
-            pydantic_response = _ComponentListResponse.model_validate_json(
-                final_response_str
+            pydantic_result = self._process_response(
+                _ComponentListResponse, final_response_str
             )
-            if (
-                pydantic_response.status != _GenerationStatus.OK
-                or not pydantic_response.result
-            ):
-                raise MealGenerationError(
-                    "Component synthesis failed or returned no result."
-                )
-
-            pydantic_components = pydantic_response.result.components
             final_components = [
-                MealComponent.from_pydantic(c) for c in pydantic_components
+                MealComponent.from_pydantic(c) for c in pydantic_result.components
             ]
 
             self._post_process_components(final_components, context_for_synthesis)
@@ -211,9 +202,12 @@ class MealGenerator:
         )
         id_config = self._create_model_config(response_schema=_IdentificationResponse)
         id_response_str = await self._call_ai_model_async(id_prompt, id_config)
-        identified_components = _IdentificationResponse.model_validate_json(
-            id_response_str
-        ).components
+
+        pydantic_result: _ComponentsIdentified = self._process_response(
+            _IdentificationResponse, id_response_str
+        )
+        identified_components = pydantic_result.components
+
         logger.info(
             f"Identified {len(identified_components)} individual components to process."
         )
@@ -236,7 +230,6 @@ class MealGenerator:
             item.get("user_query"): item.get("data_source") for item in context
         }
         for component in meal.component_list:
-            # Match by name, which is the user_query in this context
             source = data_source_map.get(component.name)
             if source:
                 updated_profile = dataclasses.replace(

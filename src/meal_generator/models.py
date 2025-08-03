@@ -94,7 +94,7 @@ class _IdentifiedComponent(BaseModel):
     user_specified_quantity: Optional[str] = None
 
 
-class _IdentificationResponse(BaseModel):
+class _ComponentsIdentified(BaseModel):
     components: List[_IdentifiedComponent]
 
 
@@ -110,5 +110,6 @@ class _AIResponse(BaseModel, Generic[ResultT]):
     result: Optional[ResultT] = None
 
 
+_IdentificationResponse = _AIResponse[_ComponentsIdentified]
 _MealResponse = _AIResponse[_Meal]
 _ComponentListResponse = _AIResponse[_ComponentList]
