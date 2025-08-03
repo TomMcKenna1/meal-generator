@@ -3,13 +3,14 @@
 [![PyPI version](https://badge.fury.io/py/meal-generator.svg)](https://badge.fury.io/py/meal-generator)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A Python package that uses a Generative AI model to parse natural language descriptions of meals and returns a detailed breakdown, including components, estimated weights, and a comprehensive nutrient profile.
+A Python package that uses a Generative AI model to parse natural language descriptions of meals and returns a detailed breakdown, including components, estimated weights, and a comprehensive nutrient profile. The module uses an advanced retrieval augmented generation pipeline to enrich results with data validated on Open Food Facts.
 
 ***
 
 ## Features
 
 -   **Natural Language Processing**: Understands descriptions of meals like "a bowl of oatmeal with a sliced banana and a drizzle of honey."
+-   **RAG Validated Results**: Uses Open Food Facts to validate known items and their data.
 -   **Component Breakdown**: Identifies individual ingredients within the meal.
 -   **Nutrient Analysis**: Provides estimated nutritional information for each component, including calories, macronutrients, and common allergens.
 -   **Structured Output**: Returns data as organized Python objects for easy integration into your applications.
