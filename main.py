@@ -15,7 +15,7 @@ async def run_generator():
     """
     generator = MealGenerator()
 
-    initial_query = "three fried eggs and a slice of jasons sour dough ciabatini"
+    initial_query = "three alcoholic pints of guiness"
     print(f"--- 1. GENERATING INITIAL MEAL for query: '{initial_query}' ---\n")
 
     try:
@@ -23,13 +23,13 @@ async def run_generator():
         print("\n--- INITIAL MEAL CREATED ---\n")
         print(meal.as_dict())
 
-        add_component_query = "and a can of coke zero"
-        print(f"\n--- 2. ADDING NEW COMPONENT for query: '{add_component_query}' ---\n")
+        # add_component_query = "and a can of coke zero"
+        # print(f"\n--- 2. ADDING NEW COMPONENT for query: '{add_component_query}' ---\n")
 
-        await meal.add_component_from_string_async(add_component_query, generator)
+        # await meal.add_component_from_string_async(add_component_query, generator)
 
-        print("\n--- UPDATED MEAL WITH NEW COMPONENT ---\n")
-        print(meal.as_dict())
+        # print("\n--- UPDATED MEAL WITH NEW COMPONENT ---\n")
+        # print(meal.as_dict())
 
     except Exception as e:
         logging.error("An error occurred during the generation process.", exc_info=True)

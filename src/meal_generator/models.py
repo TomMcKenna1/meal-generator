@@ -66,7 +66,8 @@ class _Component(BaseModel):
     )
     name: str
     brand: Optional[str] = None
-    quantity: str
+    quantity: float
+    metric: Optional[str] = None
     total_weight: float
     type: ComponentType
     nutrient_profile: _NutrientProfile

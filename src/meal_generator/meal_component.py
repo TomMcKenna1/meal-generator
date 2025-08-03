@@ -1,5 +1,3 @@
-# in meal_component.py
-
 from typing import Optional
 import uuid
 
@@ -16,12 +14,13 @@ class MealComponent(_PydanticMappable):
     def __init__(
         self,
         name: str,
-        quantity: str,
+        quantity: float,
         total_weight: float,
         component_type: ComponentType,
         nutrient_profile: NutrientProfile,
         brand: Optional[str] = None,
-        source_url: Optional[str] = None,  # NEW
+        metric: Optional[str] = None,
+        source_url: Optional[str] = None,
         id: Optional[str] = None,
     ):
         if id:
@@ -34,10 +33,11 @@ class MealComponent(_PydanticMappable):
         self.name = name
         self.brand = brand
         self.quantity = quantity
+        self.metric = metric
         self.total_weight = total_weight
         self.type = component_type
         self.nutrient_profile = nutrient_profile
-        self.source_url = source_url  # NEW
+        self.source_url = source_url
 
     def as_dict(self) -> dict:
         return {
@@ -45,9 +45,10 @@ class MealComponent(_PydanticMappable):
             "name": self.name,
             "brand": self.brand,
             "quantity": self.quantity,
+            "metric": self.metric,
             "total_weight": self.total_weight,
             "type": self.type.value,
-            "source_url": self.source_url,  # NEW
+            "source_url": self.source_url,
             "nutrient_profile": self.nutrient_profile.as_dict(),
         }
 
@@ -65,11 +66,15 @@ class MealComponent(_PydanticMappable):
             name=pydantic_component.name,
             brand=pydantic_component.brand,
             quantity=pydantic_component.quantity,
+            metric=pydantic_component.metric,
             total_weight=pydantic_component.total_weight,
             component_type=pydantic_component.type,
             nutrient_profile=nutrient_profile_object,
-            source_url=pydantic_component.source_url,  # NEW
+            source_url=pydantic_component.source_url,
         )
 
     def __repr__(self) -> str:
-        return f"<MealComponent(id={self.id}, name='{self.name}', quantity='{self.quantity}')>"
+        quantity_str = (
+            f"{self.quantity} {self.metric}" if self.metric else str(self.quantity)
+        )
+        return f"<MealComponent(id={self.id}, name='{self.name}', quantity='{quantity_str}')>"
