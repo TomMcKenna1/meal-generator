@@ -27,7 +27,8 @@ def meal_component_fixt(nutrient_profile_fixt: NutrientProfile) -> MealComponent
     """Provides a sample MealComponent instance."""
     return MealComponent(
         name="Grilled Chicken Breast",
-        quantity="1 breast",
+        quantity=1.0,
+        metric="breast",
         total_weight=120.0,
         component_type=ComponentType.FOOD,
         nutrient_profile=nutrient_profile_fixt,

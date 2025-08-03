@@ -43,7 +43,8 @@ def mock_meal_synthesis_response() -> str:
                 "components": [
                     {
                         "name": "Scrambled Eggs",
-                        "quantity": "120g",
+                        "quantity": 2.0,
+                        "metric": "large eggs",
                         "total_weight": 120.0,
                         "type": "food",
                         "nutrient_profile": {
@@ -74,7 +75,8 @@ def mock_component_synthesis_response() -> str:
                 "components": [
                     {
                         "name": "Olive Oil",
-                        "quantity": "14g",
+                        "quantity": 1.0,
+                        "metric": "tbsp",
                         "total_weight": 14.0,
                         "type": "food",
                         "nutrient_profile": {
