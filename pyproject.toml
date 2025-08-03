@@ -17,7 +17,8 @@ classifiers = [
 ]
 dependencies = [
   "pydantic",
-  "google-genai"
+  "google-genai",
+  "aiohttp",
 ]
 license = "MIT"
 license-files = ["LICEN[CS]E*"]
