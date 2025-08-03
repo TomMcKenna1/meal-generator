@@ -58,21 +58,23 @@ class NutrientProfile:
 
     @classmethod
     def from_pydantic(cls, pydantic_profile: _NutrientProfile) -> "NutrientProfile":
-        return cls(**pydantic_profile.model_dump())
+        dumped_data = pydantic_profile.model_dump()
+        if "data_source" in dumped_data and isinstance(dumped_data["data_source"], str):
+            dumped_data["data_source"] = DataSource(dumped_data["data_source"])
+        return cls(**dumped_data)
 
     def __add__(self, other: "NutrientProfile") -> "NutrientProfile":
         new_values = {}
         for f in fields(self):
             if f.name == "data_source":
-                # Define a hierarchy for data source aggregation. The "least reliable" source wins.
                 source_priority = {
-                    DataSource.ESTIMATED_MODEL: 0,
-                    DataSource.ESTIMATED_WITH_CONTEXT: 1,
-                    DataSource.RETRIEVED_API: 2,
+                    DataSource.ESTIMATED_MODEL.value: 0,
+                    DataSource.ESTIMATED_WITH_CONTEXT.value: 1,
+                    DataSource.RETRIEVED_API.value: 2,
                 }
-                self_priority = source_priority[self.data_source]
-                other_priority = source_priority[other.data_source]
-                # If priorities are different, choose the one with the lower number (less reliable)
+                self_priority = source_priority[self.data_source.value]
+                other_priority = source_priority[other.data_source.value]
+
                 if self_priority < other_priority:
                     new_values[f.name] = self.data_source
                 else:
