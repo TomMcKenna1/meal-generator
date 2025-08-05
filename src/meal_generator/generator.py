@@ -24,6 +24,7 @@ from .models import (
     _IdentificationResponse,
     _ComponentListResponse,
     _ComponentsIdentified,
+    DataSource,
 )
 
 logger = logging.getLogger(__name__)
@@ -230,10 +231,11 @@ class MealGenerator:
             item.get("user_query"): item.get("data_source") for item in context
         }
         for component in meal.component_list:
-            source = data_source_map.get(component.name)
-            if source:
+            source_str = data_source_map.get(component.name)
+            if source_str:
+                source_enum = DataSource(source_str)
                 updated_profile = dataclasses.replace(
-                    component.nutrient_profile, data_source=source
+                    component.nutrient_profile, data_source=source_enum
                 )
                 component.nutrient_profile = updated_profile
         meal.nutrient_profile = meal._calculate_aggregate_nutrients()
