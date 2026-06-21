@@ -38,15 +38,16 @@ class MealGenerationError(Exception):
 
 
 class MealGenerator:
-    _MODEL_NAME = "gemini-2.5-flash"
+    _MODEL_NAME = "gemini-3.5-flash"
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, model_name: Optional[str] = None):
         if api_key:
             self._genai_client = genai.Client(api_key=api_key)
         else:
             self._genai_client = genai.Client()
+        self._model_name = model_name or self._MODEL_NAME
         self._retriever = Retriever()
-        logger.info(f"MealGenerator initialized for model '{self._MODEL_NAME}'.")
+        logger.info(f"MealGenerator initialized for model '{self._model_name}'.")
 
     def _create_model_config(self, **kwargs) -> types.GenerationConfig:
         return types.GenerateContentConfig(
@@ -78,7 +79,7 @@ class MealGenerator:
         try:
             logger.debug("Sending async request to Generative AI model.")
             response = await self._genai_client.aio.models.generate_content(
-                model=self._MODEL_NAME,
+                model=self._model_name,
                 contents=prompt,
                 config=config,
             )
