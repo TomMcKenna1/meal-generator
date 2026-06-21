@@ -15,7 +15,7 @@ async def run_generator():
     """
     generator = MealGenerator()
 
-    initial_query = "three alcoholic pints of guiness"
+    initial_query = "half cup of uncooked black rice, chicken breast, half a cucumber, tablespoon of tahini"
     print(f"--- 1. GENERATING INITIAL MEAL for query: '{initial_query}' ---\n")
 
     try:
