@@ -27,8 +27,8 @@ jobs:
       run: |
         pytest
 
-  bump:
-    name: Bump version 🔖
+  tag:
+    name: Tag new version 🔖
     needs: test
     runs-on: ubuntu-latest
 
@@ -37,14 +37,15 @@ jobs:
       pull-requests: read
 
     outputs:
-      sha: ${{ steps.push.outputs.sha }}
-      version: ${{ steps.bump.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      version: ${{ steps.version.outputs.version }}
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
+        fetch-tags: true
 
     - name: Determine bump type from PR labels
       id: type
@@ -64,57 +65,52 @@ jobs:
         echo "Selected bump type: $bump"
         echo "bump=$bump" >> "$GITHUB_OUTPUT"
 
-    - name: Bump version in pyproject.toml
-      id: bump
+    - name: Compute next version from latest tag
+      id: version
       run: |
-        python - "${{ steps.type.outputs.bump }}" <<'PY'
-        import os, re, sys
+        latest=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' | sort -V | tail -1)
+        if [ -z "$latest" ]; then
+          # No tags yet: seed from the last manually published version (2.1.4).
+          base="2.1.4"
+        else
+          base="${latest#v}"
+        fi
+        echo "Base version: $base (latest tag: ${latest:-<none>})"
 
-        bump = sys.argv[1]
-        path = "pyproject.toml"
-        text = open(path).read()
+        IFS=. read -r major minor patch <<< "$base"
 
-        m = re.search(r'^version\s*=\s*"(\d+)\.(\d+)\.(\d+)"', text, re.MULTILINE)
-        if not m:
-            sys.exit("Could not find a semver version in pyproject.toml")
+        case "${{ steps.type.outputs.bump }}" in
+          major) major=$((major + 1)); minor=0; patch=0 ;;
+          minor) minor=$((minor + 1)); patch=0 ;;
+          *)     patch=$((patch + 1)) ;;
+        esac
 
-        major, minor, patch = (int(g) for g in m.groups())
-        if bump == "major":
-            major, minor, patch = major + 1, 0, 0
-        elif bump == "minor":
-            minor, patch = minor + 1, 0
-        else:
-            patch += 1
+        version="${major}.${minor}.${patch}"
+        tag="v${version}"
+        echo "New version: $version (tag: $tag)"
+        echo "version=$version" >> "$GITHUB_OUTPUT"
+        echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
-        new_version = f"{major}.{minor}.{patch}"
-        text = text[:m.start()] + f'version = "{new_version}"' + text[m.end():]
-        open(path, "w").write(text)
-
-        with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
-            fh.write(f"version={new_version}\n")
-        print(f"Bumped version to {new_version}")
-        PY
-
-    - name: Commit and push bumped version
-      id: push
+    - name: Create and push tag
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
-        git add pyproject.toml
-        git commit -m "chore: bump version to ${{ steps.bump.outputs.version }} [skip ci]"
-        git push origin HEAD:main
-        echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+        git tag -a "${{ steps.version.outputs.tag }}" "${{ github.sha }}" \
+          -m "Release ${{ steps.version.outputs.version }}"
+        git push origin "${{ steps.version.outputs.tag }}"
 
   build:
     name: Build package 📦
-    needs: bump
+    needs: tag
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
+    - name: Checkout tag
       uses: actions/checkout@v4
       with:
-        ref: ${{ needs.bump.outputs.sha }}
+        ref: ${{ needs.tag.outputs.tag }}
+        fetch-depth: 0
+        fetch-tags: true
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -128,6 +124,12 @@ jobs:
 
     - name: Build package
       run: python -m build
+
+    - name: Verify built version matches tag
+      run: |
+        ls dist/
+        test -n "$(ls dist/meal_generator-${{ needs.tag.outputs.version }}*.whl 2>/dev/null)" \
+          || { echo "Built artifacts do not match expected version ${{ needs.tag.outputs.version }}"; exit 1; }
 
     - name: Upload package artifact
       uses: actions/upload-artifact@v4
