@@ -1,10 +1,10 @@
 [build-system]
-requires = ["hatchling >= 1.26"]
+requires = ["hatchling >= 1.26", "hatch-vcs"]
 build-backend = "hatchling.build"
 
 [project]
 name = "meal-generator"
-version = "2.1.4"
+dynamic = ["version"]
 authors = [
   { name="Tom McKenna", email="tom2mckenna@gmail.com" },
 ]
@@ -37,5 +37,9 @@ docs = [
     "sphinx",
 ]
 
-[tool.setuptools.packages.find]
-where = ["src"]
+# Version is derived from git tags (vX.Y.Z) at build time via hatch-vcs.
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/meal_generator"]

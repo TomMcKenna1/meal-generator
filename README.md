@@ -220,6 +220,31 @@ The code would produce a `meal` object containing the following structured data:
 
 -----
 
+## Releasing & Versioning
+
+Releases are automated. Every time a pull request is merged into `main`, the
+[publish workflow](.github/workflows/publish-to-pypi.yml) runs the tests, then
+automatically bumps the version, tags the release, and publishes it to PyPI.
+
+The package version is **derived from git tags** (via `hatch-vcs`), so there is
+no version number to edit by hand in `pyproject.toml`.
+
+**How the version is chosen:** the bump type is read from the labels on the
+merged PR, applied on top of the latest `vX.Y.Z` tag:
+
+| PR label | Bump | Example (`v2.1.4` → ...) |
+| --- | --- | --- |
+| `major` | Major | `v3.0.0` |
+| `minor` | Minor | `v2.2.0` |
+| _(no label)_ | Patch | `v2.1.5` |
+
+So merging is a patch release by default. To cut a minor or major release, add
+the `minor` or `major` label to the PR **before** it is merged. The workflow
+then creates the matching `vX.Y.Z` tag and publishes that version — no commits
+are pushed back to the protected `main` branch.
+
+-----
+
 ## Contributing
 
 Contributions are welcome\! Please feel free to submit a pull request or open an issue on the [GitHub repository](https://github.com/TomMcKenna1/meal-generator).
