@@ -27,14 +27,94 @@ jobs:
       run: |
         pytest
 
+  bump:
+    name: Bump version 🔖
+    needs: test
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      pull-requests: read
+
+    outputs:
+      sha: ${{ steps.push.outputs.sha }}
+      version: ${{ steps.bump.outputs.version }}
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Determine bump type from PR labels
+      id: type
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        labels=$(gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/pulls" \
+          --jq '.[].labels[].name' 2>/dev/null || true)
+        echo "Labels on merged PR: ${labels:-<none>}"
+        if echo "$labels" | grep -qx "major"; then
+          bump=major
+        elif echo "$labels" | grep -qx "minor"; then
+          bump=minor
+        else
+          bump=patch
+        fi
+        echo "Selected bump type: $bump"
+        echo "bump=$bump" >> "$GITHUB_OUTPUT"
+
+    - name: Bump version in pyproject.toml
+      id: bump
+      run: |
+        python - "${{ steps.type.outputs.bump }}" <<'PY'
+        import os, re, sys
+
+        bump = sys.argv[1]
+        path = "pyproject.toml"
+        text = open(path).read()
+
+        m = re.search(r'^version\s*=\s*"(\d+)\.(\d+)\.(\d+)"', text, re.MULTILINE)
+        if not m:
+            sys.exit("Could not find a semver version in pyproject.toml")
+
+        major, minor, patch = (int(g) for g in m.groups())
+        if bump == "major":
+            major, minor, patch = major + 1, 0, 0
+        elif bump == "minor":
+            minor, patch = minor + 1, 0
+        else:
+            patch += 1
+
+        new_version = f"{major}.{minor}.{patch}"
+        text = text[:m.start()] + f'version = "{new_version}"' + text[m.end():]
+        open(path, "w").write(text)
+
+        with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
+            fh.write(f"version={new_version}\n")
+        print(f"Bumped version to {new_version}")
+        PY
+
+    - name: Commit and push bumped version
+      id: push
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add pyproject.toml
+        git commit -m "chore: bump version to ${{ steps.bump.outputs.version }} [skip ci]"
+        git push origin HEAD:main
+        echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
   build:
     name: Build package 📦
-    needs: test
+    needs: bump
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+      with:
+        ref: ${{ needs.bump.outputs.sha }}
 
     - name: Set up Python
       uses: actions/setup-python@v5
